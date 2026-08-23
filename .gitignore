@@ -1,0 +1,27 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+*.user
+*.suo
+.vs/
+.vscode/
+.idea/
+
+# Test / coverage output
+TestResults/
+coverage*.xml
+coverage*.json
+*.coverage
+
+# Benchmark output (regenerate with `dotnet run -c Release --project benchmarks/CalcEngine.Benchmarks`)
+benchmarks/results/*.json
+
+# ANTLR tool (downloaded by tools/get-antlr.sh; ~2 MB binary, not tracked)
+tools/*.jar
+
+# OS noise
+.DS_Store
+Thumbs.db
