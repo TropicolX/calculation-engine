@@ -59,7 +59,7 @@ public class PrecedenceTests
     [Fact]
     public void PercentIsPostfixAndBindsAlmostTightest()
     {
-        Assert.Equal("=(50% * 200)", Shape("=50%*200"));
+        Assert.Equal("=((50%) * 200)", Shape("=50%*200"));
         Assert.Equal("=((-50)%)", Shape("=-50%"));
     }
 

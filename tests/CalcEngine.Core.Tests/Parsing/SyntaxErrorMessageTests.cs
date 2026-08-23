@@ -30,7 +30,7 @@ public class SyntaxErrorMessageTests
     public void UnmatchedClosingBracket()
     {
         Assert.Equal(
-            "Column 8: there is no opening bracket to match this ')'.",
+            "Column 9: there is no opening bracket to match this ')'.",
             FirstError("=SUM(A1))").ToString());
     }
 
