@@ -249,6 +249,23 @@ public class RecalculationTests
         Assert.NotEmpty(result.Changes);
     }
 
+    [Fact]
+    public void CalculationCanBeSwitchedBackOnAfterABulkLoad()
+    {
+        // Found by the benchmark harness: the constructor option was being
+        // consulted on every edit, so a workbook created for a bulk import
+        // could never be returned to automatic calculation.
+        var workbook = new Workbook(new WorkbookOptions { AutomaticCalculation = false });
+        workbook.SetCellContent("Sheet1", "A1", "1");
+        workbook.SetCellContent("Sheet1", "B1", "=A1+1");
+
+        workbook.AutomaticCalculation = true;
+        var result = workbook.SetCellContent("Sheet1", "A1", "10");
+
+        Assert.Equal(1, result.CellsEvaluated);
+        Assert.Equal(11, workbook.GetCellValue("Sheet1", "B1").AsNumber);
+    }
+
     private sealed class RecordingObserver(List<string> seen) : ICellChangeObserver
     {
         public void OnCellsChanged(CalculationResult result)

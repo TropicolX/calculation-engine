@@ -65,6 +65,7 @@ public sealed class Workbook
         Functions = Options.Functions ?? FunctionRegistry.CreateDefault();
         _context = new WorkbookEvaluationContext(this);
         _addressOf = id => (_cells[id].SheetIndex, new CellAddress(_cells[id].Column, _cells[id].Row));
+        AutomaticCalculation = Options.AutomaticCalculation;
         History = new Commands.CommandStack(this, Options.HistoryLimit);
         AddSheet(Options.InitialSheetName);
     }
@@ -84,8 +85,13 @@ public sealed class Workbook
     /// <summary>Raised once per recalculation, after every value is settled.</summary>
     public event EventHandler<CellsChangedEventArgs>? CellsChanged;
 
-    /// <summary>True when edits recalculate immediately.</summary>
-    public bool AutomaticCalculation { get; set; } = true;
+    /// <summary>
+    /// True when edits recalculate immediately. Initialised from
+    /// <see cref="WorkbookOptions.AutomaticCalculation"/> and settable
+    /// afterwards: a bulk import switches it off, loads, and switches it back
+    /// on. This property, not the option, is the authority.
+    /// </summary>
+    public bool AutomaticCalculation { get; set; }
 
     /// <summary>Total number of cells the workbook has identifiers for; diagnostics.</summary>
     public int TrackedCellCount => _nextId;
@@ -216,7 +222,7 @@ public sealed class Workbook
             return new CalculationResult([], [], syntaxErrors, 0, Stopwatches.Elapsed(start));
         }
 
-        if (!AutomaticCalculation || !Options.AutomaticCalculation)
+        if (!AutomaticCalculation)
         {
             return DeferRecalculation(syntaxErrors, start);
         }
