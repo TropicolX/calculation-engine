@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      # Warnings are errors solution-wide; a warning here fails the build.
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Test
+        run: dotnet test --no-build -c Release --verbosity normal
+
+      # The harness exits non-zero if either published target is missed, so a
+      # performance regression fails CI rather than being noticed a term later.
+      - name: Performance targets
+        run: dotnet run --no-build -c Release --project benchmarks/CalcEngine.Benchmarks -- --quick
+
+  grammar-is-in-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # The generated parser is committed so the solution builds without Java.
+      # This job proves the committed copy is what Formula.g4 actually produces.
+      - name: Regenerate the parser
+        run: tools/generate-parser.sh
+
+      - name: Fail if the committed parser is stale
+        run: |
+          if ! git diff --quiet -- src/CalcEngine.Core/Grammar/Generated; then
+            echo "::error::The committed parser does not match Formula.g4. Run tools/generate-parser.sh and commit the result."
+            git --no-pager diff --stat -- src/CalcEngine.Core/Grammar/Generated
+            exit 1
+          fi
+          echo "The committed parser matches the grammar."
