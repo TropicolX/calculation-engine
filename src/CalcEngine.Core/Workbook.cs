@@ -483,6 +483,9 @@ public sealed class Workbook
 
     internal Sheet SheetAt(int index) => _sheets[index];
 
+    /// <summary>The position of a sheet in the workbook; -1 when there is no such sheet.</summary>
+    public bool TryGetSheetIndexPublic(string name, out int index) => TryGetSheetIndex(name, out index);
+
     internal bool TryGetSheetIndex(string name, out int index)
     {
         if (_sheetsByName.TryGetValue(name, out var sheet))
