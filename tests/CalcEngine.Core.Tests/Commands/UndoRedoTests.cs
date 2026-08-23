@@ -1,5 +1,6 @@
 using CalcEngine.Core;
 using CalcEngine.Core.Commands;
+using CalcEngine.Core.Model;
 
 namespace CalcEngine.Core.Tests.Commands;
 
@@ -172,9 +173,9 @@ public class UndoRedoTests
         var workbook = new Workbook();
         workbook.SetCellContents(
             [
-                new CellEdit(new Model.SheetCellAddress("Sheet1", Model.CellAddress.Parse("A1")), "1"),
-                new CellEdit(new Model.SheetCellAddress("Sheet1", Model.CellAddress.Parse("A2")), "2"),
-                new CellEdit(new Model.SheetCellAddress("Sheet1", Model.CellAddress.Parse("A3")), "3"),
+                new CellEdit(new SheetCellAddress("Sheet1", CellAddress.Parse("A1")), "1"),
+                new CellEdit(new SheetCellAddress("Sheet1", CellAddress.Parse("A2")), "2"),
+                new CellEdit(new SheetCellAddress("Sheet1", CellAddress.Parse("A3")), "3"),
             ],
             "fill A1:A3");
 
@@ -211,8 +212,8 @@ public class UndoRedoTests
         var composite = new CompositeCommand(
             "tidy up",
             [
-                SetCellsCommand.ForSingleCell(new Model.SheetCellAddress("Sheet1", Model.CellAddress.Parse("A1")), "2"),
-                SetCellsCommand.ForSingleCell(new Model.SheetCellAddress("Sheet1", Model.CellAddress.Parse("B1")), "3"),
+                SetCellsCommand.ForSingleCell(new SheetCellAddress("Sheet1", CellAddress.Parse("A1")), "2"),
+                SetCellsCommand.ForSingleCell(new SheetCellAddress("Sheet1", CellAddress.Parse("B1")), "3"),
             ]);
 
         workbook.History.Execute(composite);

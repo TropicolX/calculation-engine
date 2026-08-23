@@ -65,7 +65,7 @@ public sealed class Workbook
         Functions = Options.Functions ?? FunctionRegistry.CreateDefault();
         _context = new WorkbookEvaluationContext(this);
         _addressOf = id => (_cells[id].SheetIndex, new CellAddress(_cells[id].Column, _cells[id].Row));
-        History = new Commands.CommandStack(Options.HistoryLimit);
+        History = new Commands.CommandStack(this, Options.HistoryLimit);
         AddSheet(Options.InitialSheetName);
     }
 
@@ -162,6 +162,12 @@ public sealed class Workbook
     public CalculationResult SetCellContent(string sheetName, CellAddress address, string? content) =>
         SetCellContents([new CellEdit(new SheetCellAddress(sheetName, address), content)]);
 
+    /// <summary>Applies a batch of edits as one undoable operation.</summary>
+    /// <param name="edits">What to write.</param>
+    /// <param name="description">Menu text for the undo history.</param>
+    public CalculationResult SetCellContents(IReadOnlyList<CellEdit> edits, string? description = null) =>
+        History.Execute(new Commands.SetCellsCommand(edits, description));
+
     /// <inheritdoc cref="SetCellContent(string, CellAddress, string?)"/>
     public CalculationResult SetCellContent(string sheetName, string address, string? content) =>
         SetCellContent(sheetName, CellAddress.Parse(address), content);
@@ -172,14 +178,14 @@ public sealed class Workbook
 
     /// <summary>
     /// Applies a batch of edits as one operation: one recalculation, one
-    /// notification, one undo entry.
+    /// notification. Bypasses the undo history, which is the caller's business.
     /// </summary>
     /// <remarks>
-    /// This is the primitive the bulk features are built on. Replacing 400
-    /// occurrences of a course code must not run 400 recalculations, and undoing
-    /// it must not take 400 presses of Ctrl+Z.
+    /// This is the primitive every mutating path goes through, including undo
+    /// itself. Replacing 400 occurrences of a course code must not run 400
+    /// recalculations, and undoing it must not take 400 presses of Ctrl+Z.
     /// </remarks>
-    public CalculationResult SetCellContents(IReadOnlyList<CellEdit> edits)
+    internal CalculationResult ApplyEdits(IReadOnlyList<CellEdit> edits)
     {
         ArgumentNullException.ThrowIfNull(edits);
 
