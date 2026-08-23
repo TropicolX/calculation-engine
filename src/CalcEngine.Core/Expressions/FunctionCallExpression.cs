@@ -1,3 +1,7 @@
+using CalcEngine.Core.Evaluation;
+using CalcEngine.Core.Functions;
+using CalcEngine.Core.Model;
+
 namespace CalcEngine.Core.Expressions;
 
 /// <summary>A call of a library function, for example <c>SUM(B2:B45)</c>.</summary>
@@ -31,5 +35,34 @@ public sealed class FunctionCallExpression : Expression
     public IReadOnlyList<Expression> Arguments { get; }
 
     /// <inheritdoc />
+    public override CellValue Evaluate(IEvaluationContext context)
+    {
+        if (!context.TryGetFunction(Name, out var function))
+        {
+            return CellValue.FromError(
+                ErrorValue.Name.WithDetail($"there is no function called '{Name}'"));
+        }
+
+        if (Arguments.Count < function.MinimumArguments || Arguments.Count > function.MaximumArguments)
+        {
+            return CellValue.FromError(ErrorValue.Value.WithDetail(DescribeArity(function)));
+        }
+
+        return function.Invoke(new FunctionArguments(Name, Arguments, context));
+    }
+
+    /// <inheritdoc />
     public override TResult Accept<TResult>(IExpressionVisitor<TResult> visitor) => visitor.VisitFunctionCall(this);
+
+    private string DescribeArity(IFunction function)
+    {
+        var expected = function switch
+        {
+            { MaximumArguments: int.MaxValue } => $"at least {function.MinimumArguments}",
+            _ when function.MinimumArguments == function.MaximumArguments => $"{function.MinimumArguments}",
+            _ => $"between {function.MinimumArguments} and {function.MaximumArguments}",
+        };
+
+        return $"{Name} takes {expected} argument(s), but {Arguments.Count} were supplied";
+    }
 }

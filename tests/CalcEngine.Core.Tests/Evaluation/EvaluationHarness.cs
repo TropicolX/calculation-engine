@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using CalcEngine.Core.Evaluation;
 using CalcEngine.Core.Functions;
 using CalcEngine.Core.Model;
@@ -54,7 +55,7 @@ internal sealed class TestSheet : IEvaluationContext
         return this;
     }
 
-    public TestSheet WithColumn(string topCell, params object[] values)
+    public TestSheet WithColumn(string topCell, params object?[] values)
     {
         var top = CellAddress.Parse(topCell);
         for (var i = 0; i < values.Length; i++)
@@ -94,7 +95,8 @@ internal sealed class TestSheet : IEvaluationContext
         return new DictionaryRangeView(_cells, range);
     }
 
-    public bool TryGetFunction(string name, out IFunction function) => Functions.TryGet(name, out function);
+    public bool TryGetFunction(string name, [MaybeNullWhen(false)] out IFunction function) =>
+        Functions.TryGet(name, out function);
 
     private sealed class DictionaryRangeView(Dictionary<CellAddress, CellValue> cells, CellRange range) : IRangeView
     {

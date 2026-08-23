@@ -1,3 +1,6 @@
+using CalcEngine.Core.Evaluation;
+using CalcEngine.Core.Model;
+
 namespace CalcEngine.Core.Expressions;
 
 /// <summary>The three unary operators of the formula language.</summary>
@@ -115,6 +118,24 @@ public sealed class UnaryOperatorExpression : Expression
     public int Precedence => IsPostfix ? OperatorInfo.PercentPrecedence : OperatorInfo.UnaryPrecedence;
 
     /// <inheritdoc />
+    public override CellValue Evaluate(IEvaluationContext context)
+    {
+        var operand = ValueCoercion.ToNumber(Operand.Evaluate(context));
+        if (operand.IsError)
+        {
+            return operand;
+        }
+
+        var number = operand.AsNumber;
+        return Operator switch
+        {
+            UnaryOperator.Plus => ValueCoercion.FromDouble(number),
+            UnaryOperator.Minus => ValueCoercion.FromDouble(-number),
+            _ => ValueCoercion.FromDouble(number / 100.0),
+        };
+    }
+
+    /// <inheritdoc />
     public override TResult Accept<TResult>(IExpressionVisitor<TResult> visitor) => visitor.VisitUnary(this);
 }
 
@@ -140,6 +161,78 @@ public sealed class BinaryOperatorExpression : Expression
 
     /// <summary>Binding strength of this node; lower binds tighter.</summary>
     public int Precedence => OperatorInfo.Precedence(Operator);
+
+    /// <inheritdoc />
+    public override CellValue Evaluate(IEvaluationContext context)
+    {
+        // Errors propagate left to right: the leftmost error is the one the user
+        // sees, which is the one nearest the mistake they made.
+        var left = Left.Evaluate(context);
+        if (left.IsError)
+        {
+            return left;
+        }
+
+        var right = Right.Evaluate(context);
+        if (right.IsError)
+        {
+            return right;
+        }
+
+        if (Operator == BinaryOperator.Concatenate)
+        {
+            var leftText = ValueCoercion.ToText(left);
+            if (leftText.IsError)
+            {
+                return leftText;
+            }
+
+            var rightText = ValueCoercion.ToText(right);
+            return rightText.IsError
+                ? rightText
+                : CellValue.Text(leftText.AsText + rightText.AsText);
+        }
+
+        if (OperatorInfo.IsComparison(Operator))
+        {
+            var order = ValueCoercion.Compare(left, right);
+            return CellValue.Boolean(Operator switch
+            {
+                BinaryOperator.Equal => order == 0,
+                BinaryOperator.NotEqual => order != 0,
+                BinaryOperator.LessThan => order < 0,
+                BinaryOperator.LessThanOrEqual => order <= 0,
+                BinaryOperator.GreaterThan => order > 0,
+                _ => order >= 0,
+            });
+        }
+
+        var leftNumber = ValueCoercion.ToNumber(left);
+        if (leftNumber.IsError)
+        {
+            return leftNumber;
+        }
+
+        var rightNumber = ValueCoercion.ToNumber(right);
+        if (rightNumber.IsError)
+        {
+            return rightNumber;
+        }
+
+        var a = leftNumber.AsNumber;
+        var b = rightNumber.AsNumber;
+        return Operator switch
+        {
+            BinaryOperator.Add => ValueCoercion.FromDouble(a + b),
+            BinaryOperator.Subtract => ValueCoercion.FromDouble(a - b),
+            BinaryOperator.Multiply => ValueCoercion.FromDouble(a * b),
+            BinaryOperator.Divide => b == 0
+                ? CellValue.FromError(ErrorValue.DivideByZero)
+                : ValueCoercion.FromDouble(a / b),
+            BinaryOperator.Power => ValueCoercion.FromDouble(Math.Pow(a, b)),
+            _ => CellValue.FromError(ErrorValue.Value.WithDetail($"unsupported operator {Operator}")),
+        };
+    }
 
     /// <inheritdoc />
     public override TResult Accept<TResult>(IExpressionVisitor<TResult> visitor) => visitor.VisitBinary(this);

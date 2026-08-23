@@ -137,7 +137,7 @@ public class FunctionLibraryTests
 
         var sheet = new TestSheet(registry).With("A1", 60.0).With("B1", 80.0);
 
-        Eval.Number("=CAWEIGHT(A1,B1)", 72, sheet);
+        Eval.Number("=CAWEIGHT(A1,B1)", 74, sheet); // 0.3*60 + 0.7*80
     }
 
     [Fact]

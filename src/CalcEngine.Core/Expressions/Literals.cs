@@ -1,3 +1,4 @@
+using CalcEngine.Core.Evaluation;
 using CalcEngine.Core.Model;
 
 namespace CalcEngine.Core.Expressions;
@@ -10,6 +11,9 @@ public sealed class NumberLiteralExpression : Expression
 
     /// <summary>The literal's value.</summary>
     public double Value { get; }
+
+    /// <inheritdoc />
+    public override CellValue Evaluate(IEvaluationContext context) => ValueCoercion.FromDouble(Value);
 
     /// <inheritdoc />
     public override TResult Accept<TResult>(IExpressionVisitor<TResult> visitor) => visitor.VisitNumber(this);
@@ -25,6 +29,9 @@ public sealed class TextLiteralExpression : Expression
     public string Value { get; }
 
     /// <inheritdoc />
+    public override CellValue Evaluate(IEvaluationContext context) => CellValue.Text(Value);
+
+    /// <inheritdoc />
     public override TResult Accept<TResult>(IExpressionVisitor<TResult> visitor) => visitor.VisitText(this);
 }
 
@@ -38,6 +45,9 @@ public sealed class BooleanLiteralExpression : Expression
     public bool Value { get; }
 
     /// <inheritdoc />
+    public override CellValue Evaluate(IEvaluationContext context) => CellValue.Boolean(Value);
+
+    /// <inheritdoc />
     public override TResult Accept<TResult>(IExpressionVisitor<TResult> visitor) => visitor.VisitBoolean(this);
 }
 
@@ -49,6 +59,9 @@ public sealed class ErrorLiteralExpression : Expression
 
     /// <summary>The error this literal denotes.</summary>
     public ErrorValue Value { get; }
+
+    /// <inheritdoc />
+    public override CellValue Evaluate(IEvaluationContext context) => CellValue.FromError(Value);
 
     /// <inheritdoc />
     public override TResult Accept<TResult>(IExpressionVisitor<TResult> visitor) => visitor.VisitError(this);

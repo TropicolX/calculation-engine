@@ -1,3 +1,4 @@
+using CalcEngine.Core.Evaluation;
 using CalcEngine.Core.Model;
 
 namespace CalcEngine.Core.Expressions;
@@ -47,6 +48,10 @@ public sealed class CellReferenceExpression : Expression
     public CellReference Reference { get; }
 
     /// <inheritdoc />
+    public override CellValue Evaluate(IEvaluationContext context) =>
+        context.GetCellValue(SheetName, Reference.Address);
+
+    /// <inheritdoc />
     public override TResult Accept<TResult>(IExpressionVisitor<TResult> visitor) => visitor.VisitCellReference(this);
 }
 
@@ -73,6 +78,16 @@ public sealed class RangeReferenceExpression : Expression
 
     /// <summary>The normalised rectangle the two corners denote.</summary>
     public CellRange Range { get; }
+
+    /// <summary>
+    /// A range has no single value.  Excel guesses (implicit intersection);
+    /// this engine refuses, because a guess that silently reads the wrong row
+    /// is exactly the failure this project exists to prevent.
+    /// </summary>
+    /// <inheritdoc />
+    public override CellValue Evaluate(IEvaluationContext context) =>
+        CellValue.FromError(ErrorValue.Value.WithDetail(
+            $"the range {Range.ToA1()} was used where a single value is needed"));
 
     /// <inheritdoc />
     public override TResult Accept<TResult>(IExpressionVisitor<TResult> visitor) => visitor.VisitRangeReference(this);
