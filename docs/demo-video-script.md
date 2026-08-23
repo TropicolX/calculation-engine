@@ -148,5 +148,5 @@ dotnet run -c Release --project benchmarks/CalcEngine.Benchmarks
 > with an Interpreter for evaluation and a Visitor for everything else, a
 > dependency graph on dense integer identifiers with a spatial index for ranges,
 > the Command pattern for undo, and the Observer pattern for change
-> notification. Three hundred and seventy-five tests, committed before the code
+> notification. Three hundred and eighty-one tests, committed before the code
 > that makes them pass. Thank you."

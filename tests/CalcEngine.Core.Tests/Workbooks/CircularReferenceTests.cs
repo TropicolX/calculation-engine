@@ -134,6 +134,46 @@ public class CircularReferenceTests
     }
 
     [Fact]
+    public void TheCycleReadsAsASentenceForAClientWithoutADiagram()
+    {
+        var workbook = new Workbook();
+        workbook.SetCellContent("Sheet1", "A1", "=B3+1");
+        workbook.SetCellContent("Sheet1", "B3", "=C7+1");
+        var result = workbook.SetCellContent("Sheet1", "C7", "=A1+1");
+
+        Assert.Equal(
+            "A1 refers to B3, which refers to C7, which refers back to A1",
+            result.Cycles[0].ToSentence());
+    }
+
+    [Fact]
+    public void ASelfReferenceReadsAsSuch()
+    {
+        var workbook = new Workbook();
+        var result = workbook.SetCellContent("Sheet1", "A1", "=A1+1");
+
+        Assert.Equal("A1 refers to itself", result.Cycles[0].ToSentence());
+    }
+
+    [Fact]
+    public void AVeryLongCycleAbbreviatesWhenRenderedButKeepsEveryCellInItsPath()
+    {
+        var workbook = new Workbook();
+        const int Length = 40;
+        for (var row = 1; row <= Length; row++)
+        {
+            var previous = row == 1 ? Length : row - 1;
+            workbook.SetCellContent("Sheet1", $"A{row}", $"=A{previous}+1");
+        }
+
+        var cycle = workbook.RecalculateAll().Cycles[0];
+
+        Assert.Equal(Length, cycle.Path.Count);
+        Assert.Contains("more)", cycle.ToString(), StringComparison.Ordinal);
+        Assert.True(cycle.ToString().Length < 200, "a rendered cycle must stay readable");
+    }
+
+    [Fact]
     public void ALongCycleDoesNotOverflowTheStack()
     {
         // 20,000 cells in one ring: a recursive detector would die here.

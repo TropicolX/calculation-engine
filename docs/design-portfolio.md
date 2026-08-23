@@ -88,10 +88,14 @@ it in.*
 | `Features.*` | Find & Replace, Duplicates | root |
 
 The arrows only ever point inwards. `Model` knows about nothing;
-`Features` knows about everything. **Exactly one file outside
-`Grammar.Generated` mentions `Antlr4.Runtime`** — `Parsing/AstBuilder.cs` — so
-the parser generator could be replaced without touching the evaluator, the
-graph, or either assigned feature.
+`Features` knows about everything. **ANTLR is confined to two namespaces**:
+the generated parser, and the four files of `Parsing` that drive it
+(`FormulaParser`, `AstBuilder`, `DescriptiveErrorListener`,
+`TokenPreValidator`). Nothing else in the solution mentions `Antlr4.Runtime`,
+so the parser generator could be replaced without touching the expression tree,
+the evaluator, the graph, or either assigned feature — `AstBuilder` is the seam,
+because it is the only place the generated parse tree is turned into the
+engine's own ADT.
 
 ---
 

@@ -90,10 +90,14 @@ public sealed class CircularReference
 
         if (shown < Path.Count)
         {
-            sentence.Append($", and after {Path.Count - shown:N0} more cells");
+            sentence.Append($", and after {Path.Count - shown:N0} more cells, refers back to ");
+        }
+        else
+        {
+            sentence.Append(", which refers back to ");
         }
 
-        return sentence.Append(", refers back to ").Append(Describe(Path[0], qualify)).ToString();
+        return sentence.Append(Describe(Path[0], qualify)).ToString();
     }
 
     private static string Describe(SheetCellAddress address, bool qualify) =>

@@ -8,7 +8,7 @@ dotnet test --filter "Category!=Performance"       # without the timing guards, 
 dotnet test --filter "Category=Performance"        # the two published targets only
 ```
 
-375 tests, all green.
+381 tests, all green.
 
 ---
 
@@ -19,11 +19,12 @@ dotnet test --filter "Category=Performance"        # the two published targets o
 | `Model/` | 77 | The three foundational ADTs: bijective base-26 columns, normalising range corners, the tagged-union discipline of `CellValue`, invariant-culture display |
 | `Parsing/` | 79 | Tree shape for every construct, the Excel precedence table, the print/parse round trip, and the exact wording and column of every syntax error |
 | `Evaluation/` | 95 | Coercions, leftmost-error propagation, the eight required functions and the supporting library, registry extension |
-| `Workbooks/` | 48 | Content classification, reactive propagation, edge removal, cross-sheet references, circular references |
+| `Workbooks/` | 51 | Content classification, reactive propagation, edge removal, cross-sheet references, circular references |
 | `Commands/` | 17 | Undo, redo, bounded history, batch and composite operations, suspension |
 | `Features/` | 56 | Find & Replace and duplicate detection, including every way each can refuse |
 | `Performance/` | 3 | The two published targets and the locality claim behind them |
-| *Total* | **375** | |
+| `ReadmeExampleTests` | 3 | Every value quoted in README.md and in the grammar's error catalogue, executed |
+| *Total* | **381** | |
 
 ---
 
@@ -64,6 +65,12 @@ rather than a footnote.
 
 **`SyntaxErrorMessageTests`** pins the exact string of every parser message.
 Error messages that drift are error messages nobody trusts.
+
+**`ReadmeExampleTests`** executes the example in `README.md` and the error
+catalogue in `grammar.md` §6. Documentation that is not executed is
+documentation that is wrong by the end of term — this suite already caught one
+inaccurate README claim (`Changes[0]` is the edited cell, not its dependent) and
+one badly worded diagnostic (`ToSentence()` omitted a "which").
 
 ---
 
