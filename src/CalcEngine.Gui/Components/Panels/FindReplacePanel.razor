@@ -1,0 +1,168 @@
+@using CalcEngine.Core.Features.FindReplace
+@using CalcEngine.Core.Model
+@using CalcEngine.Gui.Services
+@inject WorkbookSession Session
+
+<section class="panel">
+    <h2>Find &amp; Replace</h2>
+
+    <label class="field">
+        <span>Find</span>
+        <input @bind="_searchText" @bind:event="oninput" placeholder="e.g. CSC/21/0433" />
+    </label>
+
+    <label class="field">
+        <span>Replace with</span>
+        <input @bind="_replacement" @bind:event="oninput" placeholder="e.g. CSC/21/0533" />
+    </label>
+
+    <div class="checks">
+        <label><input type="checkbox" @bind="_matchCase" /> Match case</label>
+        <label><input type="checkbox" @bind="_entireCell" /> Whole cell</label>
+        <label><input type="checkbox" @bind="_useRegex" /> Regular expression</label>
+    </div>
+
+    <label class="field">
+        <span>Look in</span>
+        <select @bind="_lookIn">
+            <option value="@SearchIn.Content">Formulas (raw content)</option>
+            <option value="@SearchIn.DisplayValue">Values (what is shown)</option>
+        </select>
+    </label>
+
+    <label class="field">
+        <span>Formulas</span>
+        <select @bind="_formulas">
+            <option value="@FormulaHandling.WholeContent">Replace anywhere (Excel-like)</option>
+            <option value="@FormulaHandling.TextLiteralsOnly">Only inside quoted text</option>
+            <option value="@FormulaHandling.SkipFormulas">Leave formulas alone</option>
+        </select>
+    </label>
+
+    <div class="buttons">
+        <button @onclick="FindAll" disabled="@string.IsNullOrEmpty(_searchText)">Find all</button>
+        <button @onclick="FindNext" disabled="@string.IsNullOrEmpty(_searchText)">Find next</button>
+        <button class="primary" @onclick="ReplaceAll" disabled="@string.IsNullOrEmpty(_searchText)">Replace all</button>
+    </div>
+
+    @if (_error is not null)
+    {
+        <p class="panel-error">@_error</p>
+    }
+
+    @if (_matches is not null)
+    {
+        <p class="panel-note">@_matches.Count match(es).</p>
+        <ul class="results">
+            @foreach (var match in _matches.Take(50))
+            {
+                <li>
+                    <button class="link" @onclick="() => Session.Select(match.Address.Address)">
+                        @match.Address.ToA1()
+                    </button>
+                    <code>@Snippet(match)</code>
+                </li>
+            }
+        </ul>
+        @if (_matches.Count > 50)
+        {
+            <p class="panel-note">…and @(_matches.Count - 50) more.</p>
+        }
+    }
+
+    @if (_lastReplace is not null)
+    {
+        <p class="panel-note">
+            Replaced @_lastReplace.OccurrencesReplaced occurrence(s) in @_lastReplace.CellsChanged cell(s).
+        </p>
+        @if (_lastReplace.Skipped.Count > 0)
+        {
+            <p class="panel-warning">@_lastReplace.Skipped.Count cell(s) were left alone:</p>
+            <ul class="results">
+                @foreach (var skipped in _lastReplace.Skipped.Take(10))
+                {
+                    <li><strong>@skipped.Address.ToA1()</strong> — @skipped.Explanation</li>
+                }
+            </ul>
+        }
+    }
+</section>
+
+@code {
+    private string _searchText = string.Empty;
+    private string _replacement = string.Empty;
+    private bool _matchCase;
+    private bool _entireCell;
+    private bool _useRegex;
+    private SearchIn _lookIn = SearchIn.Content;
+    private FormulaHandling _formulas = FormulaHandling.WholeContent;
+
+    private IReadOnlyList<FindMatch>? _matches;
+    private ReplaceResult? _lastReplace;
+    private string? _error;
+
+    private FindOptions Options => new()
+    {
+        SearchText = _searchText,
+        MatchCase = _matchCase,
+        MatchEntireCell = _entireCell,
+        UseRegex = _useRegex,
+        LookIn = _lookIn,
+        Formulas = _formulas,
+        SheetName = Session.ActiveSheet,
+    };
+
+    private void FindAll() => Guarded(() =>
+    {
+        _matches = new FindReplaceService(Session.Workbook).FindAll(Options);
+        _lastReplace = null;
+    });
+
+    private void FindNext() => Guarded(() =>
+    {
+        var service = new FindReplaceService(Session.Workbook);
+        var next = service.FindNext(Options, Session.Selected);
+        _matches = next is null ? [] : [next];
+        _lastReplace = null;
+        if (next is not null)
+        {
+            Session.Select(next.Address.Address);
+        }
+    });
+
+    private void ReplaceAll() => Guarded(() =>
+    {
+        _lastReplace = new FindReplaceService(Session.Workbook).ReplaceAll(Options, _replacement);
+        _matches = null;
+        Session.Refresh();
+    });
+
+    /// <summary>
+    /// The engine throws only for programming errors — an unparsable regular
+    /// expression is one, since the user typed it. Catching it here keeps a bad
+    /// pattern from taking down the circuit.
+    /// </summary>
+    private void Guarded(Action action)
+    {
+        _error = null;
+        try
+        {
+            action();
+        }
+        catch (ArgumentException exception)
+        {
+            _error = exception.Message;
+            _matches = null;
+        }
+    }
+
+    private static string Snippet(FindMatch match)
+    {
+        var text = match.SearchedText;
+        var from = Math.Max(0, match.Start - 12);
+        var to = Math.Min(text.Length, match.Start + match.Length + 12);
+        var prefix = from > 0 ? "…" : string.Empty;
+        var suffix = to < text.Length ? "…" : string.Empty;
+        return prefix + text[from..to] + suffix;
+    }
+}

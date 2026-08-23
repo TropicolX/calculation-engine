@@ -1,0 +1,222 @@
+@using CalcEngine.Core
+@using CalcEngine.Core.Model
+@using CalcEngine.Gui.Services
+@inject WorkbookSession Session
+@inject IJSRuntime JS
+
+@*
+    The grid.  It knows nothing the engine does not tell it: values come from
+    Workbook.GetCellValue, error text from the ErrorValue's own Detail, and the
+    "just changed" flash from the CalculationResult delivered to the session's
+    ICellChangeObserver.
+*@
+
+<div class="grid-scroll" role="grid" aria-label="Spreadsheet">
+    <table class="grid">
+        <thead>
+            <tr>
+                <th class="corner" scope="col"></th>
+                @for (var column = 1; column <= Session.VisibleColumns; column++)
+                {
+                    var isSelected = column == Session.Selected.Address.Column;
+                    <th scope="col" class="@(isSelected ? "col-head selected-head" : "col-head")">
+                        @CellAddress.ColumnName(column)
+                    </th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @for (var row = 1; row <= Session.VisibleRows; row++)
+            {
+                var currentRow = row;
+                <tr>
+                    <th scope="row"
+                        class="@(currentRow == Session.Selected.Address.Row ? "row-head selected-head" : "row-head")">
+                        @currentRow
+                    </th>
+                    @for (var column = 1; column <= Session.VisibleColumns; column++)
+                    {
+                        var address = new CellAddress(column, currentRow);
+                        var full = new SheetCellAddress(Session.ActiveSheet, address);
+                        var value = Session.Workbook.GetCellValue(full);
+                        var content = Session.Workbook.GetCellContent(full);
+                        var isSelected = address == Session.Selected.Address;
+
+                        <td class="@CellClass(address, full, value, isSelected)"
+                            title="@Tooltip(address, content, value)"
+                            @onclick="() => Select(address)">
+                            @if (isSelected)
+                            {
+                                <input class="cell-editor"
+                                       @ref="_editor"
+                                       value="@_editBuffer"
+                                       @oninput="e => _editBuffer = e.Value?.ToString() ?? string.Empty"
+                                       @onkeydown="OnKeyDown"
+                                       aria-label="@address.ToA1()" />
+                            }
+                            else
+                            {
+                                <span class="cell-text">@value.ToDisplayString()</span>
+                                @if (content is { Length: > 0 } text && text[0] == '=')
+                                {
+                                    <span class="formula-mark" aria-hidden="true"></span>
+                                }
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private ElementReference _editor;
+    private string _editBuffer = string.Empty;
+    private bool _focusRequested;
+    private CellAddress _lastSelection;
+
+    /// <summary>
+    /// Set once the buffer has been seeded.  A plain "has the selection moved?"
+    /// test cannot do this job: default(CellAddress) *is* A1, so on the very
+    /// first render the buffer looked up to date while still holding the empty
+    /// string — and the first click elsewhere committed that emptiness over A1.
+    /// </summary>
+    private bool _seeded;
+
+    protected override void OnInitialized()
+    {
+        Session.Changed += OnSessionChanged;
+        SyncBuffer();
+    }
+
+    protected override void OnParametersSet() => SyncBuffer();
+
+    private void OnSessionChanged()
+    {
+        SyncBuffer();
+        InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>Keeps the in-cell editor showing the selected cell's raw content.</summary>
+    private void SyncBuffer()
+    {
+        if (_seeded && _lastSelection == Session.Selected.Address)
+        {
+            return;
+        }
+
+        _seeded = true;
+        _lastSelection = Session.Selected.Address;
+        _editBuffer = Session.SelectedContent;
+        _focusRequested = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _focusRequested = true;
+        }
+
+        if (_focusRequested)
+        {
+            _focusRequested = false;
+            try
+            {
+                await JS.InvokeVoidAsync("calcEngine.focusAndSelect", _editor);
+            }
+            catch (JSException)
+            {
+                // The editor is not on screen (the selection scrolled away);
+                // losing focus is not worth failing a render over.
+            }
+        }
+    }
+
+    private void Select(CellAddress address)
+    {
+        if (address != Session.Selected.Address)
+        {
+            Commit();
+        }
+
+        Session.Select(address);
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "Enter":
+                Commit();
+                Session.MoveSelection(0, e.ShiftKey ? -1 : 1);
+                break;
+
+            case "Tab":
+                Commit();
+                Session.MoveSelection(e.ShiftKey ? -1 : 1, 0);
+                break;
+
+            case "Escape":
+                _editBuffer = Session.SelectedContent;
+                _focusRequested = true;
+                break;
+        }
+    }
+
+    private void Commit()
+    {
+        if (!string.Equals(_editBuffer, Session.SelectedContent, StringComparison.Ordinal))
+        {
+            Session.Commit(Session.Selected.Address, _editBuffer.Length == 0 ? null : _editBuffer);
+        }
+    }
+
+    private string CellClass(CellAddress address, SheetCellAddress full, CellValue value, bool isSelected)
+    {
+        var classes = new List<string>(5) { "cell" };
+
+        if (isSelected)
+        {
+            classes.Add("selected");
+        }
+
+        if (value.IsError)
+        {
+            classes.Add(value.AsError.Kind == ErrorKind.Circular ? "circular" : "error");
+        }
+        else if (value.IsNumber)
+        {
+            classes.Add("numeric");
+        }
+        else if (value.IsBoolean)
+        {
+            classes.Add("boolean");
+        }
+
+        if (Session.RecentlyChanged.Contains(full))
+        {
+            classes.Add("changed");
+        }
+
+        if (Session.Duplicates?.IsDuplicate(full) == true)
+        {
+            classes.Add("duplicate");
+        }
+
+        return string.Join(' ', classes);
+    }
+
+    private static string Tooltip(CellAddress address, string? content, CellValue value)
+    {
+        if (value.IsError && value.AsError.Detail is { } detail)
+        {
+            return $"{address.ToA1()}  {value.AsError.Code} — {detail}";
+        }
+
+        return content is null ? address.ToA1() : $"{address.ToA1()}  {content}";
+    }
+
+    public void Dispose() => Session.Changed -= OnSessionChanged;
+}

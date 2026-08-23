@@ -1,7 +1,148 @@
-﻿@page "/"
+@page "/"
+@using CalcEngine.Core
+@using CalcEngine.Core.Model
+@using CalcEngine.Gui.Components.Panels
+@using CalcEngine.Gui.Services
+@implements IDisposable
+@inject WorkbookSession Session
 
-<PageTitle>Home</PageTitle>
+<PageTitle>CalcEngine — CSC322 Group E</PageTitle>
 
-<h1>Hello, world!</h1>
+<header class="app-bar">
+    <div class="brand">
+        <span class="logo">fx</span>
+        <div>
+            <h1>CalcEngine</h1>
+            <p>A calculation engine for the results portal — CSC322 Group E</p>
+        </div>
+    </div>
 
-Welcome to your new app.
+    <div class="toolbar">
+        <button @onclick="Session.Undo" disabled="@(!Session.Workbook.History.CanUndo)"
+                title="@(Session.Workbook.History.NextUndoDescription ?? "nothing to undo")">
+            ↶ Undo
+        </button>
+        <button @onclick="Session.Redo" disabled="@(!Session.Workbook.History.CanRedo)"
+                title="@(Session.Workbook.History.NextRedoDescription ?? "nothing to redo")">
+            ↷ Redo
+        </button>
+        <span class="divider"></span>
+        <button @onclick="Session.RecalculateAll">Recalculate all</button>
+        <button @onclick="Session.InsertCircularReference">Insert a circular reference</button>
+        <span class="divider"></span>
+        <button @onclick="() => Session.AddRows(20)">+20 rows</button>
+        <button @onclick="() => Session.AddColumns(4)">+4 columns</button>
+    </div>
+</header>
+
+<div class="formula-bar">
+    <span class="address" aria-label="Selected cell">@Session.Selected.Address.ToA1()</span>
+    <span class="fx">fx</span>
+    <input class="formula-input"
+           value="@_formulaBuffer"
+           @oninput="e => _formulaBuffer = e.Value?.ToString() ?? string.Empty"
+           @onkeydown="OnFormulaKeyDown"
+           placeholder="Type a value, or a formula beginning with =" />
+    <span class="value-preview">@Preview()</span>
+</div>
+
+<main class="workspace">
+    <div class="sheet-area">
+        <SpreadsheetGrid />
+    </div>
+    <aside class="side">
+        <FindReplacePanel />
+        <DuplicatesPanel />
+
+        <section class="panel">
+            <h2>Diagnostics</h2>
+            @if (Session.LastResult is { } result)
+            {
+                <dl class="stats">
+                    <dt>Cells evaluated</dt><dd>@result.CellsEvaluated.ToString("N0")</dd>
+                    <dt>Cells changed</dt><dd>@result.Changes.Count.ToString("N0")</dd>
+                    <dt>Time</dt><dd>@result.Duration.TotalMilliseconds.ToString("F3") ms</dd>
+                    <dt>Tracked cells</dt><dd>@Session.Workbook.TrackedCellCount.ToString("N0")</dd>
+                    <dt>Undo depth</dt><dd>@Session.Workbook.History.UndoCount / @Session.Workbook.History.Limit</dd>
+                </dl>
+            }
+            else
+            {
+                <p class="panel-note">Nothing calculated yet.</p>
+            }
+
+            <div class="buttons">
+                <button @onclick="Session.LoadSampleResultsSheet">Reload the sample sheet</button>
+            </div>
+        </section>
+    </aside>
+</main>
+
+@if (Session.LastResult is { HasCycles: true } cycles)
+{
+    <div class="banner circular-banner" role="alert">
+        <strong>Circular reference</strong>
+        @foreach (var cycle in cycles.Cycles)
+        {
+            <span class="cycle">@cycle</span>
+        }
+    </div>
+}
+
+<footer class="status-bar">
+    <span class="status-text">@(Session.Notice ?? "Ready.")</span>
+    <span class="legend">
+        <span class="swatch changed"></span> just recalculated
+        <span class="swatch duplicate"></span> duplicate
+        <span class="swatch error"></span> error
+        <span class="swatch circular"></span> circular
+    </span>
+</footer>
+
+@code {
+    private string _formulaBuffer = string.Empty;
+    private CellAddress _lastSelection;
+
+    protected override void OnInitialized()
+    {
+        Session.Changed += OnChanged;
+        _lastSelection = Session.Selected.Address;
+        _formulaBuffer = Session.SelectedContent;
+    }
+
+    private void OnChanged()
+    {
+        if (_lastSelection != Session.Selected.Address)
+        {
+            _lastSelection = Session.Selected.Address;
+        }
+
+        _formulaBuffer = Session.SelectedContent;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnFormulaKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key != "Enter")
+        {
+            return;
+        }
+
+        Session.Commit(Session.Selected.Address, _formulaBuffer.Length == 0 ? null : _formulaBuffer);
+    }
+
+    private string Preview()
+    {
+        var value = Session.Workbook.GetCellValue(Session.Selected);
+        if (value.IsBlank)
+        {
+            return string.Empty;
+        }
+
+        return value.IsError && value.AsError.Detail is { } detail
+            ? $"{value.AsError.Code} — {detail}"
+            : $"= {value.ToDisplayString()}";
+    }
+
+    public void Dispose() => Session.Changed -= OnChanged;
+}

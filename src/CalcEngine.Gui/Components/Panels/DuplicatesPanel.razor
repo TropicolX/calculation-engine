@@ -1,0 +1,157 @@
+@using CalcEngine.Core.Features.Duplicates
+@using CalcEngine.Core.Model
+@using CalcEngine.Gui.Services
+@inject WorkbookSession Session
+
+<section class="panel">
+    <h2>Duplicates</h2>
+
+    <label class="field">
+        <span>Range</span>
+        <input @bind="_rangeText" @bind:event="oninput" placeholder="A1:G13" />
+    </label>
+
+    <label class="field">
+        <span>Compare</span>
+        <select @bind="_scope">
+            <option value="@DuplicateScope.Rows">Whole rows (records)</option>
+            <option value="@DuplicateScope.Columns">Whole columns</option>
+            <option value="@DuplicateScope.Cells">Individual cells</option>
+        </select>
+    </label>
+
+    <label class="field">
+        <span>Key columns</span>
+        <input @bind="_keyColumns" @bind:event="oninput" placeholder="blank = all, or e.g. 0,1" />
+    </label>
+
+    <div class="checks">
+        <label><input type="checkbox" @bind="_hasHeader" /> First row is a header</label>
+        <label><input type="checkbox" @bind="_matchCase" /> Match case</label>
+        <label><input type="checkbox" @bind="_allowMovingFormulas" /> Allow moving formulas</label>
+    </div>
+
+    <label class="field">
+        <span>Removal</span>
+        <select @bind="_removal">
+            <option value="@DuplicateRemoval.ClearContents">Clear the repeats in place</option>
+            <option value="@DuplicateRemoval.ShiftUp">Compact the survivors upwards</option>
+            <option value="@DuplicateRemoval.MarkOnly">Highlight only</option>
+        </select>
+    </label>
+
+    <div class="buttons">
+        <button @onclick="Scan">Find duplicates</button>
+        <button class="danger" @onclick="Remove">Remove</button>
+        <button @onclick="() => Session.ClearDuplicates()">Clear highlight</button>
+    </div>
+
+    @if (_error is not null)
+    {
+        <p class="panel-error">@_error</p>
+    }
+
+    @if (Session.Duplicates is { } report)
+    {
+        <p class="panel-note">
+            @report.DuplicateCount repeated record(s) in @report.Groups.Count group(s);
+            @report.DistinctCount distinct.
+        </p>
+        <ul class="results">
+            @foreach (var group in report.Groups.Take(20))
+            {
+                <li>
+                    <strong>@group.Count×</strong>
+                    <button class="link" @onclick="() => Session.Select(group.First.Cells.TopLeft)">
+                        @group.First.Cells.ToA1()
+                    </button>
+                    kept; removing
+                    @string.Join(", ", group.Repeats.Select(r => r.Cells.ToA1()))
+                </li>
+            }
+        </ul>
+    }
+
+    @if (_lastRemoval is { Refused: true })
+    {
+        <p class="panel-warning">Refused: @_lastRemoval.RefusalReason</p>
+    }
+    else if (_lastRemoval is not null)
+    {
+        <p class="panel-note">
+            Removed @_lastRemoval.RecordsRemoved record(s); @_lastRemoval.RecordsRemaining remain.
+        </p>
+    }
+</section>
+
+@code {
+    private string _rangeText = "A1:G13";
+    private string _keyColumns = string.Empty;
+    private DuplicateScope _scope = DuplicateScope.Rows;
+    private DuplicateRemoval _removal = DuplicateRemoval.ClearContents;
+    private bool _hasHeader = true;
+    private bool _matchCase;
+    private bool _allowMovingFormulas;
+    private RemoveDuplicatesResult? _lastRemoval;
+    private string? _error;
+
+    private void Scan() => Guarded(() =>
+    {
+        Session.Duplicates = new DuplicateService(Session.Workbook).Find(BuildOptions());
+        _lastRemoval = null;
+        Session.Refresh();
+    });
+
+    private void Remove() => Guarded(() =>
+    {
+        var service = new DuplicateService(Session.Workbook);
+        var options = BuildOptions();
+        _lastRemoval = service.Remove(options, _removal);
+        Session.Duplicates = _lastRemoval.Report;
+        Session.Notice = _lastRemoval.Refused ? _lastRemoval.RefusalReason : _lastRemoval.ToString();
+        Session.Refresh();
+    });
+
+    private DuplicateOptions BuildOptions()
+    {
+        if (!CellRange.TryParse(_rangeText, out var range))
+        {
+            throw new ArgumentException($"'{_rangeText}' is not a range such as A1:G13.");
+        }
+
+        int[]? keys = null;
+        if (!string.IsNullOrWhiteSpace(_keyColumns))
+        {
+            keys = _keyColumns
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(part => int.TryParse(part, out var n)
+                    ? n
+                    : throw new ArgumentException($"'{part}' is not a column offset."))
+                .ToArray();
+        }
+
+        return new DuplicateOptions
+        {
+            Range = range,
+            SheetName = Session.ActiveSheet,
+            Scope = _scope,
+            HasHeaderRow = _hasHeader,
+            KeyColumnOffsets = keys,
+            MatchCase = _matchCase,
+            AllowMovingFormulas = _allowMovingFormulas,
+        };
+    }
+
+    private void Guarded(Action action)
+    {
+        _error = null;
+        try
+        {
+            action();
+        }
+        catch (Exception exception) when (exception is ArgumentException or KeyNotFoundException)
+        {
+            _error = exception.Message;
+        }
+    }
+}
