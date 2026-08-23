@@ -9,7 +9,7 @@
 We set out to build the part of a spreadsheet that nobody sees: a formula
 language, an expression tree, a dependency graph, and a recalculation loop,
 packaged as a .NET class library that the results portal can embed. What we
-finished is 381 tests over roughly six thousand lines of engine code, a Blazor
+finished is 382 tests over roughly six thousand lines of engine code, a Blazor
 grid that drives it, and two performance figures that sit two orders of magnitude
 inside the targets we were given.
 

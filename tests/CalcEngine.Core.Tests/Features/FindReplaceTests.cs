@@ -411,6 +411,24 @@ public class FindReplaceTests
     }
 
     [Fact]
+    public void AZeroLengthRegexMatchCanStillBeReplaced()
+    {
+        // A pattern such as ^ matches the empty string.  Find must not loop and
+        // Replace must not try to build a matcher for an empty search text.
+        var workbook = new Workbook();
+        workbook.SetCellContent("Sheet1", "A1", "322");
+        var service = Service(workbook);
+        var options = new FindOptions { SearchText = "^", UseRegex = true };
+
+        var match = service.FindNext(options)!;
+        Assert.Equal(0, match.Length);
+
+        service.Replace(match, "CSC");
+
+        Assert.Equal("CSC322", workbook.GetCellContent("Sheet1", "A1"));
+    }
+
+    [Fact]
     public void ReplaceAll_TurningTextIntoANumberReclassifiesTheCell()
     {
         // Replacement rewrites content, so the classifier runs again: this is

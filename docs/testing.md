@@ -8,7 +8,7 @@ dotnet test --filter "Category!=Performance"       # without the timing guards, 
 dotnet test --filter "Category=Performance"        # the two published targets only
 ```
 
-381 tests, all green.
+382 tests, all green.
 
 ---
 
@@ -21,10 +21,10 @@ dotnet test --filter "Category=Performance"        # the two published targets o
 | `Evaluation/` | 95 | Coercions, leftmost-error propagation, the eight required functions and the supporting library, registry extension |
 | `Workbooks/` | 51 | Content classification, reactive propagation, edge removal, cross-sheet references, circular references |
 | `Commands/` | 17 | Undo, redo, bounded history, batch and composite operations, suspension |
-| `Features/` | 56 | Find & Replace and duplicate detection, including every way each can refuse |
+| `Features/` | 57 | Find & Replace and duplicate detection, including every way each can refuse |
 | `Performance/` | 3 | The two published targets and the locality claim behind them |
 | `ReadmeExampleTests` | 3 | Every value quoted in README.md and in the grammar's error catalogue, executed |
-| *Total* | **381** | |
+| *Total* | **382** | |
 
 ---
 

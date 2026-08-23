@@ -190,8 +190,13 @@ public sealed class FindReplaceService
                 CalculationResult.Empty);
         }
 
-        var matcher = new TextMatcher(new FindOptions { SearchText = match.MatchedText });
-        var newContent = matcher.ReplaceOne(content, match.Start, match.Length, replacement);
+        // A regular expression can match the empty string, and a matcher cannot
+        // be built for an empty search text.  Splice directly: the match already
+        // says exactly which characters to replace.
+        var newContent = match.Length == 0
+            ? string.Concat(content.AsSpan(0, match.Start), replacement, content.AsSpan(match.Start))
+            : new TextMatcher(new FindOptions { SearchText = match.MatchedText })
+                .ReplaceOne(content, match.Start, match.Length, replacement);
         if (string.Equals(newContent, content, StringComparison.Ordinal))
         {
             return new ReplaceResult(0, [], [], CalculationResult.Empty);

@@ -10,7 +10,7 @@ batch importer — can embed. No ribbon, no charts, just the part that makes a
 formula spring to life the moment a mark is entered.
 
 ```
-381 tests, all green
+382 tests, all green
 single edit through a 500-cell chain in a 100,000-cell workbook   0.32 ms   (target 50 ms)
 full recalculation of the same workbook                          79.37 ms   (target 2,000 ms)
 ```
@@ -23,7 +23,7 @@ full recalculation of the same workbook                          79.37 ms   (tar
 
 ```bash
 dotnet build          # SDK 8.0 or later.  No Java required.
-dotnet test           # 381 tests, about five seconds
+dotnet test           # 382 tests, about five seconds
 dotnet run --project src/CalcEngine.Gui -c Release        # the GUI client
 dotnet run -c Release --project benchmarks/CalcEngine.Benchmarks   # the targets
 ```
@@ -81,7 +81,7 @@ workbook.History.Undo();
 | --- | --- |
 | `src/CalcEngine.Core` | **The API.** Grammar, parser, expression tree, dependency graph, evaluator, function library, undo/redo, and both assigned features. |
 | `src/CalcEngine.Gui` | GUI client: a scrollable grid driving the API through its public surface only. |
-| `tests/CalcEngine.Core.Tests` | 381 xUnit tests. |
+| `tests/CalcEngine.Core.Tests` | 382 xUnit tests. |
 | `benchmarks/CalcEngine.Benchmarks` | Performance harness; exits non-zero if a published target is missed. |
 | `docs/` | Design portfolio, ADT specifications, grammar, benchmarks, AI log, critique, reflection. |
 | `tools/` | ANTLR download and parser generation; the browser smoke test. |
