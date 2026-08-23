@@ -158,8 +158,8 @@ public class RecalculationTests
 
         var result = workbook.RecalculateAll();
 
-        Assert.Equal(3, result.CellsEvaluated);
-        Assert.Empty(result.Changes);   // nothing was stale
+        Assert.Equal(2, result.CellsEvaluated);   // A1 holds a literal; only A2 and A3 are formulas
+        Assert.Empty(result.Changes);             // nothing was stale
         Assert.Equal(15, workbook.GetCellValue("Sheet1", "A3").AsNumber);
     }
 
