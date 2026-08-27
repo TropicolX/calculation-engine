@@ -94,14 +94,21 @@ unit test passed, because no unit test loaded a workbook the way a real client
 would. The benchmark harness was the first code that used the engine like a
 consumer, and it found the bug in its first run.
 
-**We would run the thing sooner.** The other defect of the project was in the
-grid: `default(CellAddress)` is `A1` by design, so the component's "has the
-selection moved?" test was false on the first render, the edit buffer was never
-seeded, and the first click elsewhere committed an empty string over `A1`,
-deleting the header of the sample sheet. Nobody caught it by reading. It was
-caught by looking at a screenshot from the browser smoke test. Everything we know
-about the engine's internals came from tests; both of the genuine bugs came from
-running it.
+**We would run the thing sooner, and by hand.** The other two defects were both
+in the grid, and both came from the same line of code: `default(CellAddress)` is
+`A1` by design, so the component's "has the selection moved?" test was the wrong
+question to ask. First it was false on the very first render, so the edit buffer
+was never seeded and the first click elsewhere committed an empty string over
+`A1`, deleting the header of the sample sheet. Then — found later, by a user
+driving the GUI by hand rather than by any check of ours — the same test meant
+the selected cell never re-read the workbook when a Replace All rewrote it, so
+the grid showed stale text beside a formula bar showing the truth.
+
+That second one is the more instructive. The engine was right, the tests were
+right, and the product was still wrong, because two views of the same cell were
+allowed to disagree and nothing in the suite compared them. Everything we know
+about the engine's internals came from tests; all three genuine bugs came from
+running it, and the last one only from running it the way a person would.
 
 **We would reconsider one API decision.** `FunctionArguments` gives every
 function unevaluated arguments, which is what makes `IF` lazy and is right. But

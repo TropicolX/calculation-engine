@@ -77,6 +77,15 @@
     private CellAddress _lastSelection;
 
     /// <summary>
+    /// The content the buffer was last seeded from.  This, not the selection,
+    /// is what decides whether the editor is stale: Replace All, Undo and a
+    /// commit from the formula bar all change the selected cell *without*
+    /// moving the selection, and an editor that only re-reads when the
+    /// selection moves goes on showing text the workbook no longer holds.
+    /// </summary>
+    private string? _seededContent;
+
+    /// <summary>
     /// Set once the buffer has been seeded.  A plain "has the selection moved?"
     /// test cannot do this job: default(CellAddress) *is* A1, so on the very
     /// first render the buffer looked up to date while still holding the empty
@@ -98,18 +107,41 @@
         InvokeAsync(StateHasChanged);
     }
 
-    /// <summary>Keeps the in-cell editor showing the selected cell's raw content.</summary>
+    /// <summary>
+    /// Keeps the in-cell editor showing the selected cell's raw content.
+    /// </summary>
+    /// <remarks>
+    /// Two ways the editor can go stale, and they want different treatment:
+    /// the selection moved to another cell, in which case the editor should
+    /// also take focus; or the cell under the selection was rewritten by
+    /// something else — a replacement, an undo, a commit from the formula bar —
+    /// in which case the buffer must be re-read but focus must be left alone,
+    /// because the user is most likely still in the panel they clicked.
+    ///
+    /// This is only ever called from a change notification, never while the
+    /// user is typing: keystrokes update <c>_editBuffer</c> through
+    /// <c>@oninput</c> and raise nothing, so re-seeding here cannot discard an
+    /// edit in progress.
+    /// </remarks>
     private void SyncBuffer()
     {
-        if (_seeded && _lastSelection == Session.Selected.Address)
+        var content = Session.SelectedContent;
+        var selectionMoved = !_seeded || _lastSelection != Session.Selected.Address;
+
+        if (!selectionMoved && string.Equals(content, _seededContent, StringComparison.Ordinal))
         {
             return;
         }
 
         _seeded = true;
         _lastSelection = Session.Selected.Address;
-        _editBuffer = Session.SelectedContent;
-        _focusRequested = true;
+        _editBuffer = content;
+        _seededContent = content;
+
+        if (selectionMoved)
+        {
+            _focusRequested = true;
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -167,10 +199,13 @@
 
     private void Commit()
     {
-        if (!string.Equals(_editBuffer, Session.SelectedContent, StringComparison.Ordinal))
+        if (string.Equals(_editBuffer, Session.SelectedContent, StringComparison.Ordinal))
         {
-            Session.Commit(Session.Selected.Address, _editBuffer.Length == 0 ? null : _editBuffer);
+            return;
         }
+
+        Session.Commit(Session.Selected.Address, _editBuffer.Length == 0 ? null : _editBuffer);
+        _seededContent = Session.SelectedContent;
     }
 
     private string CellClass(CellAddress address, SheetCellAddress full, CellValue value, bool isSelected)

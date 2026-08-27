@@ -16,18 +16,24 @@ formula and reads the parser's message off the status bar, then replaces text
 and undoes it.
 
 ```bash
-# 1. start the client
+# 1. start the client (serves on http://localhost:5271)
 dotnet run --project src/CalcEngine.Gui -c Release
 
 # 2. in another terminal
 npm install playwright            # once; PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 if a browser is already present
 SHOTS=./shots node tools/gui-smoke.js
+
+# point it somewhere else if you started the client on another port
+CALCENGINE_URL=http://localhost:5000/ SHOTS=./shots node tools/gui-smoke.js
 ```
 
 It prints a JSON report and writes numbered screenshots to `$SHOTS`. An empty
 `errors` array means no failed requests and no browser exceptions.
 
-It found two real defects during development, both recorded in the AI
-collaboration log: the grid committing an empty edit buffer over `A1` on the
-first click, and `Workbook.AutomaticCalculation` being unable to be switched
-back on.
+It found two real defects during development: the grid committing an empty edit
+buffer over `A1` on the first click, and `Workbook.AutomaticCalculation` being
+unable to be switched back on. A third — the selected cell going stale after a
+Replace All — got past it and was reported by a user, so §8 now compares every
+checked cell's rendered text against its tooltip, which is read straight from
+the workbook. Two views of the same cell disagreeing is the failure this script
+exists to catch.

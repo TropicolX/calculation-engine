@@ -113,9 +113,9 @@ rather than quietly editing it. Three times:
 
 ## 4. What the tests did not catch
 
-Two real defects reached the repository and were found by *running* the system,
-not by testing it. Both are recorded here because a test suite's honest measure
-includes what got past it.
+Three real defects reached the repository and were found by *running* the
+system, not by testing it. They are recorded here because a test suite's honest
+measure includes what got past it.
 
 **`Workbook.AutomaticCalculation` could not be switched back on.** The property
 was initialised but every edit consulted the constructor option instead, so a
@@ -130,8 +130,21 @@ the edit buffer was never seeded, and the first click elsewhere committed an
 empty string over the header. Found by looking at a screenshot from
 `tools/gui-smoke.js`.
 
-The lesson we took: unit tests prove the parts, and only running the whole thing
-proves the seams.
+**The selected cell went stale after a replacement.** The same "has the
+selection moved?" test decided when to re-read the workbook, so a Replace All —
+or an undo, or a commit typed into the formula bar — that rewrote the cell the
+user was sitting on left the grid showing the old text while the formula bar
+showed the new one. The data was always correct; only the one cell under the
+selection lied about it. Reported by a user driving the GUI by hand, which no
+automated check we had was doing. The editor now re-seeds on the right key —
+"is the buffer still what the workbook holds?" — and `tools/gui-smoke.js` §8
+compares each cell's rendered text against its tooltip, which is read straight
+from the workbook.
+
+The lesson we took: unit tests prove the parts, running the whole thing proves
+the seams — and the seam nobody exercised was the one where two views of the
+same cell can disagree. All three defects are in the client or in a code path no
+test drove like a real client would; none is in `CalcEngine.Core`.
 
 ---
 

@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 
 const OUT = process.env.SHOTS || '/tmp/shots';
-const URL = 'http://127.0.0.1:5088/';
+const URL = process.env.CALCENGINE_URL || 'http://localhost:5271/';
 
 const cell = (a1) => `td.cell:has(input[aria-label="${a1}"]), td.cell`;
 
@@ -97,6 +97,45 @@ const cell = (a1) => `td.cell:has(input[aria-label="${a1}"]), td.cell`;
   await page.getByRole('button', { name: '↶ Undo' }).click();
   await page.waitForTimeout(600);
   report.B3_after_undo = await readCell('B3');
+
+  // ---- 8. the selected cell must not go stale ------------------------------
+  // Regression: the in-cell editor used to re-read the workbook only when the
+  // selection moved, so a Replace All or a formula-bar commit that rewrote the
+  // cell the user was sitting on left the grid showing the old text while the
+  // formula bar showed the new one.  The tooltip always reflects the workbook,
+  // so comparing the two is the check.
+  const cellState = (addr) => page.evaluate((a) => {
+    const tds = [...document.querySelectorAll('td.cell')];
+    const td = tds.find(t => { const x = t.getAttribute('title') || ''; return x === a || x.startsWith(a + ' '); });
+    if (!td) return null;
+    const input = td.querySelector('input.cell-editor');
+    const tooltip = td.getAttribute('title') || '';
+    return {
+      shown: input ? input.value : td.innerText.trim(),
+      inWorkbook: tooltip.startsWith(a + '  ') ? tooltip.slice(a.length + 2) : '',
+    };
+  }, addr);
+
+  await clickCell('B2');
+  await page.locator('.panel:has-text("Find & Replace") input').first().fill('Okafor');
+  await page.locator('.panel:has-text("Find & Replace") input').nth(1).fill('Okonkwo');
+  await page.getByRole('button', { name: 'Replace all' }).click();
+  await page.waitForTimeout(700);
+  const afterReplace = await cellState('B2');
+  report.selected_cell_after_replace = afterReplace;
+  if (afterReplace.shown !== afterReplace.inWorkbook) {
+    errors.push(`stale editor after Replace All: grid shows "${afterReplace.shown}", workbook holds "${afterReplace.inWorkbook}"`);
+  }
+
+  await clickCell('B6');
+  await page.locator('.formula-input').fill('Nwosu, Emeka Jr');
+  await page.locator('.formula-input').press('Enter');
+  await page.waitForTimeout(600);
+  const afterBar = await cellState('B6');
+  report.selected_cell_after_formula_bar = afterBar;
+  if (afterBar.shown !== afterBar.inWorkbook) {
+    errors.push(`stale editor after formula-bar commit: grid shows "${afterBar.shown}", workbook holds "${afterBar.inWorkbook}"`);
+  }
 
   report.errors = errors;
   console.log(JSON.stringify(report, null, 2));
