@@ -6,8 +6,7 @@ Assigned additional features: **Find and Replace** · **Duplicate Detection / Re
 CalcEngine is the machinery behind `=SUM(B2:B45)*0.3`: a formula language, an
 expression tree, a dependency graph and a reactive recalculation loop, packaged
 as a .NET class library that any client — the results portal, a desktop grid, a
-batch importer — can embed. No ribbon, no charts, just the part that makes a
-formula spring to life the moment a mark is entered.
+batch importer — can embed.
 
 ```
 382 tests, all green
@@ -77,28 +76,28 @@ workbook.History.Undo();
 
 ## Repository layout
 
-| Path | What lives there |
-| --- | --- |
-| `src/CalcEngine.Core` | **The API.** Grammar, parser, expression tree, dependency graph, evaluator, function library, undo/redo, and both assigned features. |
-| `src/CalcEngine.Gui` | GUI client: a scrollable grid driving the API through its public surface only. |
-| `tests/CalcEngine.Core.Tests` | 382 xUnit tests. |
-| `benchmarks/CalcEngine.Benchmarks` | Performance harness; exits non-zero if a published target is missed. |
-| `docs/` | Design portfolio, ADT specifications, grammar, benchmarks, AI log, critique, reflection. |
-| `tools/` | ANTLR download and parser generation; the browser smoke test. |
+| Path                               | What lives there                                                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/CalcEngine.Core`              | **The API.** Grammar, parser, expression tree, dependency graph, evaluator, function library, undo/redo, and both assigned features. |
+| `src/CalcEngine.Gui`               | GUI client: a scrollable grid driving the API through its public surface only.                                                       |
+| `tests/CalcEngine.Core.Tests`      | 382 xUnit tests.                                                                                                                     |
+| `benchmarks/CalcEngine.Benchmarks` | Performance harness; exits non-zero if a published target is missed.                                                                 |
+| `docs/`                            | Design portfolio, ADT specifications, grammar, benchmarks, AI log, critique, reflection.                                             |
+| `tools/`                           | ANTLR download and parser generation; the browser smoke test.                                                                        |
 
 ### Inside `CalcEngine.Core`
 
-| Namespace | Responsibility |
-| --- | --- |
-| `Model` | `CellAddress`, `CellRange`, `CellValue`, `ErrorValue` |
-| `Grammar` | `Formula.g4` and the generated ANTLR parser |
-| `Parsing` | Text → expression tree, or errors with positions |
-| `Expressions` | The tree ADT, printing, reference extraction, literal finding |
-| `Evaluation` | Coercions and the evaluation-context seam |
-| `Functions` | The library and its registry |
-| `Dependencies` | The graph, the range index, ordering, cycle extraction |
-| `Commands` | Undo/redo |
-| `Features.FindReplace`, `Features.Duplicates` | The two assigned features |
+| Namespace                                     | Responsibility                                                |
+| --------------------------------------------- | ------------------------------------------------------------- |
+| `Model`                                       | `CellAddress`, `CellRange`, `CellValue`, `ErrorValue`         |
+| `Grammar`                                     | `Formula.g4` and the generated ANTLR parser                   |
+| `Parsing`                                     | Text → expression tree, or errors with positions              |
+| `Expressions`                                 | The tree ADT, printing, reference extraction, literal finding |
+| `Evaluation`                                  | Coercions and the evaluation-context seam                     |
+| `Functions`                                   | The library and its registry                                  |
+| `Dependencies`                                | The graph, the range index, ordering, cycle extraction        |
+| `Commands`                                    | Undo/redo                                                     |
+| `Features.FindReplace`, `Features.Duplicates` | The two assigned features                                     |
 
 Dependencies point inwards only, and ANTLR is confined to `Grammar` and the
 four files of `Parsing` that drive it. Nothing else in the solution mentions
@@ -143,32 +142,32 @@ Three decisions, measured in [`docs/benchmarks.md`](docs/benchmarks.md):
 
 ## Documentation
 
-| Document | Contents |
-| --- | --- |
-| [Design portfolio](docs/design-portfolio.md) | Architecture, class diagrams, patterns, and the alternatives we rejected |
-| [ADT specifications](docs/adt-specifications.md) | Abstraction function and representation invariant for every type |
-| [Formal grammar](docs/grammar.md) | EBNF, lexical conventions, precedence, error reporting |
-| [Benchmarks](docs/benchmarks.md) | The published targets, how to run them, and the results |
-| [Test suite](docs/testing.md) | How the suite is organised, and what got past it |
-| [AI collaboration log](docs/ai-collaboration-log.md) | Twenty entries, including what we did not ship |
-| [Critique exercise](docs/critique/critique.md) · [transcript](docs/critique/transcript.md) | A senior review of an AI-written dependency graph |
-| [Reflection](docs/reflection.md) | What we designed, what we would change, what the tools got wrong |
-| [Demo script](docs/demo-video-script.md) | The five-minute demonstration, beat by beat |
+| Document                                                                                   | Contents                                                                 |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| [Design portfolio](docs/design-portfolio.md)                                               | Architecture, class diagrams, patterns, and the alternatives we rejected |
+| [ADT specifications](docs/adt-specifications.md)                                           | Abstraction function and representation invariant for every type         |
+| [Formal grammar](docs/grammar.md)                                                          | EBNF, lexical conventions, precedence, error reporting                   |
+| [Benchmarks](docs/benchmarks.md)                                                           | The published targets, how to run them, and the results                  |
+| [Test suite](docs/testing.md)                                                              | How the suite is organised, and what got past it                         |
+| [AI collaboration log](docs/ai-collaboration-log.md)                                       | Twenty entries, including what we did not ship                           |
+| [Critique exercise](docs/critique/critique.md) · [transcript](docs/critique/transcript.md) | A senior review of an AI-written dependency graph                        |
+| [Reflection](docs/reflection.md)                                                           | What we designed, what we would change, what the tools got wrong         |
+| [Demo script](docs/demo-video-script.md)                                                   | The five-minute demonstration, beat by beat                              |
 
 ---
 
 ## Design patterns, and where to find them
 
-| Pattern | Where | Why |
-| --- | --- | --- |
-| Composite | `Expressions/Expression.cs` and its nine subclasses | The expression tree |
-| Interpreter | `Expression.Evaluate(IEvaluationContext)` | Evaluation is the hot path; one virtual call beats double dispatch |
-| Visitor | `IExpressionVisitor<T>`, `FormulaPrinter`, `ReferenceCollector`, `TextLiteralFinder` | Open-ended traversals cost a class, not a method on nine types |
-| Observer | `ICellChangeObserver`, `Workbook.CellsChanged` | Change propagation to clients |
-| Command | `IUndoableCommand`, `SetCellsCommand`, `CompositeCommand`, `CommandStack` | Undo/redo of at least 100 operations |
-| Strategy | `IFunction` and the library | A pluggable function set |
-| Factory / Registry | `FunctionRegistry.CreateDefault`, `Register` | Clients extend the library without a fork |
-| Adapter | `PointwiseFunction` | Two dozen functions that differ only by a lambda |
+| Pattern            | Where                                                                                | Why                                                                |
+| ------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| Composite          | `Expressions/Expression.cs` and its nine subclasses                                  | The expression tree                                                |
+| Interpreter        | `Expression.Evaluate(IEvaluationContext)`                                            | Evaluation is the hot path; one virtual call beats double dispatch |
+| Visitor            | `IExpressionVisitor<T>`, `FormulaPrinter`, `ReferenceCollector`, `TextLiteralFinder` | Open-ended traversals cost a class, not a method on nine types     |
+| Observer           | `ICellChangeObserver`, `Workbook.CellsChanged`                                       | Change propagation to clients                                      |
+| Command            | `IUndoableCommand`, `SetCellsCommand`, `CompositeCommand`, `CommandStack`            | Undo/redo of at least 100 operations                               |
+| Strategy           | `IFunction` and the library                                                          | A pluggable function set                                           |
+| Factory / Registry | `FunctionRegistry.CreateDefault`, `Register`                                         | Clients extend the library without a fork                          |
+| Adapter            | `PointwiseFunction`                                                                  | Two dozen functions that differ only by a lambda                   |
 
 ---
 

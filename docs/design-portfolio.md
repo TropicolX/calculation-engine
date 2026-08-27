@@ -74,18 +74,18 @@ it in.*
 
 ### 2.1 Module responsibilities
 
-| Namespace | Responsibility | Depends on |
-| --- | --- | --- |
-| `Model` | Addresses, ranges, values, errors | nothing |
-| `Grammar.Generated` | ANTLR lexer/parser | ANTLR runtime |
-| `Parsing` | Text → expression tree, or errors with positions | `Grammar`, `Expressions`, `Model` |
-| `Expressions` | The tree ADT, printing, reference extraction | `Model`, `Evaluation` (interfaces only) |
-| `Evaluation` | Coercions, the evaluation-context seam | `Model`, `Functions` |
-| `Functions` | The function library and its registry | `Model`, `Evaluation` |
-| `Dependencies` | The graph, the range index, ordering, cycles | `Model` |
-| *(root)* | `Workbook`, `Sheet`, results, observers | everything |
-| `Commands` | Undo/redo | root |
-| `Features.*` | Find & Replace, Duplicates | root |
+| Namespace           | Responsibility                                   | Depends on                              |
+| ------------------- | ------------------------------------------------ | --------------------------------------- |
+| `Model`             | Addresses, ranges, values, errors                | nothing                                 |
+| `Grammar.Generated` | ANTLR lexer/parser                               | ANTLR runtime                           |
+| `Parsing`           | Text → expression tree, or errors with positions | `Grammar`, `Expressions`, `Model`       |
+| `Expressions`       | The tree ADT, printing, reference extraction     | `Model`, `Evaluation` (interfaces only) |
+| `Evaluation`        | Coercions, the evaluation-context seam           | `Model`, `Functions`                    |
+| `Functions`         | The function library and its registry            | `Model`, `Evaluation`                   |
+| `Dependencies`      | The graph, the range index, ordering, cycles     | `Model`                                 |
+| *(root)*            | `Workbook`, `Sheet`, results, observers          | everything                              |
+| `Commands`          | Undo/redo                                        | root                                    |
+| `Features.*`        | Find & Replace, Duplicates                       | root                                    |
 
 The arrows only ever point inwards. `Model` knows about nothing;
 `Features` knows about everything. **ANTLR is confined to two namespaces**:
@@ -410,7 +410,7 @@ else, and that is worth one extra argument to prevent.
 
 ## 6. The range-dependency problem, in full
 
-This is the design decision we would most want to be asked about.
+This is the design decision I would most want to be asked about.
 
 `=SUM(B2:B45)` depends on 44 cells. The obvious implementation expands the range
 into 44 edges. It is wrong for three reasons, in increasing order of severity:
@@ -424,10 +424,10 @@ into 44 edges. It is wrong for three reasons, in increasing order of severity:
    update or must pre-create identities for every cell any range could ever
    cover.
 
-The alternative we rejected second was a per-sheet list of ranges scanned on
+The alternative I rejected second was a per-sheet list of ranges scanned on
 every change: correct, trivial, and `O(number of range formulas)` per keystroke.
 
-**What we built.** The grid is cut into 64×64 blocks. A range is filed under
+**What I built.** The grid is cut into 64×64 blocks. A range is filed under
 every block it intersects; a changed cell is looked up by its own block and the
 few candidates filed there are tested for containment. Ranges spanning more than
 1,024 blocks — which our grammar makes hard to write, since it has no
@@ -499,11 +499,11 @@ classDiagram
 Searching a spreadsheet is easy. Replacing in one is not, because three of the
 places a match can be found are places a naive replace corrupts:
 
-| Where the match is | What a naive replace does | What CalcEngine does |
-| --- | --- | --- |
-| In a formula's *structure* — "B2" inside `=SUM(B2:B9)` | Silently rewrites the range and changes every total | `FormulaHandling.TextLiteralsOnly` rewrites only inside quoted text, using the parsed tree and its `SourceSpan`s |
-| In a *computed value* | Writes to a cell that does not hold that text, or does nothing without saying so | Reports the cell in `Skipped` with `ComputedValue` and an explanation |
-| Where the result would not parse | Stores a broken formula | Re-parses before writing; refuses with the parser's own message |
+| Where the match is                                     | What a naive replace does                                                        | What CalcEngine does                                                                                             |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| In a formula's *structure* — "B2" inside `=SUM(B2:B9)` | Silently rewrites the range and changes every total                              | `FormulaHandling.TextLiteralsOnly` rewrites only inside quoted text, using the parsed tree and its `SourceSpan`s |
+| In a *computed value*                                  | Writes to a cell that does not hold that text, or does nothing without saying so | Reports the cell in `Skipped` with `ComputedValue` and an explanation                                            |
+| Where the result would not parse                       | Stores a broken formula                                                          | Re-parses before writing; refuses with the parser's own message                                                  |
 
 The default mode is `WholeContent` — Excel's behaviour — because it is what
 someone renaming a course code usually wants. But the alternative exists, is one
@@ -579,7 +579,7 @@ duplicate a typed one. The length prefix keeps the record `{"a","b"}` apart from
 their *value*, because two rows computing the same grade by different routes are
 the same record.
 
-**Removal, and a limit we chose deliberately.** Three modes:
+**Removal, and a limit I chose deliberately.** Three modes:
 
 * `ClearContents` (default) blanks the repeats where they stand. Nothing moves,
   so nothing that refers into the range can be silently redirected.
@@ -589,12 +589,12 @@ the same record.
 `ShiftUp` moves raw content, and **relative references do not follow it**. Full
 row-delete semantics — rewriting every formula in the workbook so that references
 below the deleted rows shift up and references *into* them become `#REF!` — is
-what a real spreadsheet does, and we did not build it. It is a whole-workbook
+what a real spreadsheet does, and I did not build it. It is a whole-workbook
 formula rewrite, it needs its own ADT (a reference-translating visitor) and its
 own test suite, and a half-implemented version is worse than none because it
 would be *silently* wrong.
 
-What we did instead is refuse: if compacting would relocate a formula, `ShiftUp`
+What I did instead is refuse: if compacting would relocate a formula, `ShiftUp`
 changes nothing, names the cells in `FormulasThatWouldMove`, and explains why in
 `RefusalReason`. The caller can set `AllowMovingFormulas` to proceed with the
 verbatim move. That is an honest limit with a safe default, and
@@ -682,25 +682,25 @@ What the grid shows that a plain grid does not:
 
 ---
 
-## 10. Design decisions, and the alternatives we rejected
+## 10. Design decisions, and the alternatives I rejected
 
-| Decision | Alternative considered | Why we chose as we did |
-| --- | --- | --- |
-| Range dependencies in a 64×64 spatial index | Expand ranges into per-cell edges | Expansion cannot fire when a previously empty cell inside the range is filled in (§6) |
-| Generation-stamped visit marks | Clear a visited set per traversal | Clearing 100,000 flags per keystroke costs more than the propagation |
-| Explicitly stacked DFS | Recursion | A 20,000-cell chain is ordinary; `StackOverflowException` cannot be caught |
-| Interpreter for evaluation, Visitor for the rest | One mechanism for both | Double dispatch on the hot path, or nine new methods per traversal |
-| Unevaluated function arguments | `IReadOnlyList<CellValue>` | `IF` must not evaluate the branch it does not take |
-| `#PARSE!` stored, edit accepted | Reject the edit like Excel's dialogue | An API cannot show a dialogue; a bulk importer needs the bad text kept and flagged |
-| `-2^2 = 4` | Mathematical convention | The engine exists to run formulas copied out of Excel (`grammar.md` §4.1) |
-| No whole-column ranges (`A:A`) | Support them | One edge would stand for 1,048,576 cells and defeat the range index |
-| Duplicate `ShiftUp` refuses to move formulas | Move them silently, or rewrite references | A silent move is the corruption we exist to prevent; a proper rewrite is a separate feature (§7.2) |
-| Cells in one flat array under dense ids | Per-sheet `Dictionary<CellAddress, Cell>` | Array-speed adjacency; one graph across sheets; ~100,000 fewer allocations |
-| `CellValue` as a 24-byte struct | A class hierarchy of value types | No allocation for the numeric case that dominates a workbook |
+| Decision                                         | Alternative considered                    | Why I chose as I did                                                                              |
+| ------------------------------------------------ | ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Range dependencies in a 64×64 spatial index      | Expand ranges into per-cell edges         | Expansion cannot fire when a previously empty cell inside the range is filled in (§6)             |
+| Generation-stamped visit marks                   | Clear a visited set per traversal         | Clearing 100,000 flags per keystroke costs more than the propagation                              |
+| Explicitly stacked DFS                           | Recursion                                 | A 20,000-cell chain is ordinary; `StackOverflowException` cannot be caught                        |
+| Interpreter for evaluation, Visitor for the rest | One mechanism for both                    | Double dispatch on the hot path, or nine new methods per traversal                                |
+| Unevaluated function arguments                   | `IReadOnlyList<CellValue>`                | `IF` must not evaluate the branch it does not take                                                |
+| `#PARSE!` stored, edit accepted                  | Reject the edit like Excel's dialogue     | An API cannot show a dialogue; a bulk importer needs the bad text kept and flagged                |
+| `-2^2 = 4`                                       | Mathematical convention                   | The engine exists to run formulas copied out of Excel (`grammar.md` §4.1)                         |
+| No whole-column ranges (`A:A`)                   | Support them                              | One edge would stand for 1,048,576 cells and defeat the range index                               |
+| Duplicate `ShiftUp` refuses to move formulas     | Move them silently, or rewrite references | A silent move is the corruption I exist to prevent; a proper rewrite is a separate feature (§7.2) |
+| Cells in one flat array under dense ids          | Per-sheet `Dictionary<CellAddress, Cell>` | Array-speed adjacency; one graph across sheets; ~100,000 fewer allocations                        |
+| `CellValue` as a 24-byte struct                  | A class hierarchy of value types          | No allocation for the numeric case that dominates a workbook                                      |
 
 ---
 
-## 11. What is not built, and what we would do next
+## 11. What is not built, and what I would do next
 
 Stated plainly, because a design portfolio that lists only what worked is not a
 design portfolio.
@@ -720,4 +720,4 @@ design portfolio.
   work rather than an untested change (`benchmarks.md` §5).
 * **Thread safety.** `Workbook` is single-threaded by design and says so. With a
   25× margin on the only published target, adding threads to a structure this
-  mutable would be buying risk we do not need.
+  mutable would be buying risk I do not need.

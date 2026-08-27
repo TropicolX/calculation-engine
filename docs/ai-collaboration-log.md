@@ -3,15 +3,15 @@
 **CSC322 Group E — CalcEngine**
 
 Every significant use of an AI assistant on this project, in date order. For
-each: what we asked, what came back, what we changed, and why.
+each: what I asked, what came back, what I changed, and why.
 
-The rule we worked to is the one in the brief: *an engineer who ships code is
+The rule I worked to is the one in the brief: *an engineer who ships code is
 responsible for that code, no matter who or what wrote the first draft.* In
 practice that meant a standing habit — **no AI-produced code entered the
 repository until one of us could state, out loud, what would break if it were
-wrong.** Several entries below are things we did not ship.
+wrong.** Several entries below are things I did not ship.
 
-Tools used: **Claude (Sonnet/Opus)** for design discussion and drafting,
+Tools used: **Claude (Opus)** for design discussion and drafting,
 **GitHub Copilot** for line completion inside the editor, **ChatGPT** for the
 critique exercise (transcript in [`critique/`](critique/)).
 
@@ -20,10 +20,10 @@ Where an entry says "rejected", the code is not in the repository. Where it says
 
 ---
 
-### 1 · 14 July · Claude · Scoping the whole engine
+### 1 · 23 August · Claude · Scoping the whole engine
 
 **Asked.** For an architecture for a spreadsheet calculation engine meeting the
-brief, before we wrote anything.
+brief, before I wrote anything.
 
 **Got.** A sensible five-box pipeline — parser, expression tree, dependency
 graph, evaluator, notification — which is essentially the architecture in
@@ -32,40 +32,40 @@ graph, evaluator, notification — which is essentially the architecture in
 
 **Changed.** Kept the pipeline; **rejected the string keys.** A string key means
 hashing a string on every graph lookup, and the graph is walked once per
-dependent per keystroke. We took integer identifiers instead, interned per
+dependent per keystroke. I took integer identifiers instead, interned per
 (sheet, column, row). This was the first decision of the project and it set the
 shape of `DependencyGraph`.
 
 **Why it mattered.** The 50 ms target is not tight if the traversal is array
-indexing and is genuinely tight if it is string hashing. We did not measure the
+indexing and is genuinely tight if it is string hashing. I did not measure the
 rejected version, which is a gap — see the reflection.
 
 ---
 
-### 2 · 15 July · Claude · The grammar, first draft
+### 2 · 23 August · Claude · The grammar, first draft
 
 **Asked.** For an ANTLR 4 grammar for a spreadsheet formula language with the
 eight required functions.
 
-**Got.** A workable grammar. Two problems we caught by reading it:
+**Got.** A workable grammar. Two problems I caught by reading it:
 
 * It gave `^` higher precedence than unary minus, so `=-2^2` would be `-4`.
-  Excel says `4`. We flipped the alternative order and wrote
+  Excel says `4`. I flipped the alternative order and wrote
   `Negation_BindsTighterThanPower_LikeExcel` so the decision is a test rather
   than folklore (`grammar.md` §4.1).
 * It lexed sheet names as a bare `IDENTIFIER` followed by `'!'`, which is
-  ambiguous with a cell reference in a lexer that does not backtrack. We made
+  ambiguous with a cell reference in a lexer that does not backtrack. I made
   the `'!'` part of the `SHEET_QUALIFIER` token so maximal munch decides it.
 
 **Also rejected.** Its suggestion of whole-column ranges (`A:A`). One edge would
-then stand for 1,048,576 cells, which defeats the range index we had already
+then stand for 1,048,576 cells, which defeats the range index I had already
 decided on. That exclusion is documented, not silent.
 
 ---
 
-### 3 · 16 July · Copilot · `CellAddress.ColumnName`
+### 3 · 23 August · Copilot · `CellAddress.ColumnName`
 
-**Asked.** Nothing — completion offered a bijective base-26 conversion as we
+**Asked.** Nothing — completion offered a bijective base-26 conversion as I
 typed the signature.
 
 **Got.** Correct-looking code with an off-by-one: it treated the conversion as
@@ -78,7 +78,7 @@ algorithm gets wrong.
 
 ---
 
-### 4 · 18 July · Claude · Dependency graph, first design (**rejected**)
+### 4 · 23 August · Claude · Dependency graph, first design (**rejected**)
 
 **Asked.** For a dependency graph supporting fast edge insertion and removal,
 cycle detection and topological ordering.
@@ -87,7 +87,7 @@ cycle detection and topological ordering.
 `Recalculate()` that rebuilt a topological order of **the entire workbook** on
 every change and re-evaluated every formula in it.
 
-**Rejected, and this is the entry we would point to first.** It is correct. It is
+**Rejected, and this is the entry I would point to first.** It is correct. It is
 also `O(all formulas)` per keystroke, which for the brief's 100,000-cell workbook
 means a full recalculation every time a mark is typed — roughly 75 ms in our
 final build, so it would even have *passed* the 50 ms target on a fast day and
@@ -101,7 +101,7 @@ merely slowing things down.
 
 ---
 
-### 5 · 18 July · Claude · Ranges in the dependency graph
+### 5 · 23 August · Claude · Ranges in the dependency graph
 
 **Asked.** How to make `=SUM(B2:B45)` depend on its range.
 
@@ -118,9 +118,9 @@ always-scanned fallback list for pathologically large ranges.
 `WritingIntoAPreviouslyEmptyCellOfARangeStillTriggersIt` is the test that names
 the reason.
 
-**Honest note.** The AI did not think of this; we found the empty-cell case by
+**Honest note.** The AI did not think of this; I found the empty-cell case by
 hand-tracing what happens when a lecturer fills in a mark for a student who was
-absent at export time. We then asked the AI to critique the block-index design,
+absent at export time. I then asked the AI to critique the block-index design,
 and it correctly pointed out the unbounded-range case, which is where the
 `MaxBlocksPerRange` fallback comes from. That exchange is a fair example of
 where the tool was genuinely useful: not at inventing the structure, but at
@@ -128,7 +128,7 @@ attacking it once it existed.
 
 ---
 
-### 6 · 20 July · Claude · Cycle detection
+### 6 · 23 August · Claude · Cycle detection
 
 **Asked.** For circular-reference detection reporting the exact cycle.
 
@@ -146,12 +146,12 @@ throwing `CircularReferenceException` on a back edge.
    `ALongCycleDoesNotOverflowTheStack` holds the line at 20,000.
 3. **Canonical path.** The draft reported the cycle starting wherever the search
    entered it, so the same broken workbook produced different messages depending
-   on typing order. We reverse the stack slice (the search travels "is read by";
+   on typing order. I reverse the stack slice (the search travels "is read by";
    users think "refers to") and rotate to the smallest address.
 
 ---
 
-### 7 · 21 July · Claude · Error messages from ANTLR
+### 7 · 23 August · Claude · Error messages from ANTLR
 
 **Asked.** How to turn ANTLR's `mismatched input ')' expecting {NUMBER, STRING,
 …}` into something a lecturer can act on.
@@ -161,7 +161,7 @@ basis of `DescriptiveErrorListener`.
 
 **Added ourselves.** The listener alone still produced a cascade for the single
 most common mistake — a missing `)`. ANTLR's recovery invents tokens and then
-complains about the consequences, pointing at the wrong place. We added
+complains about the consequences, pointing at the wrong place. I added
 `TokenPreValidator`: one linear pass over the flat token list that catches stray
 characters, unterminated text and bracket imbalance *before* the parser runs, so
 the engine can say "the bracket opened at column 5 was never closed" — naming the
@@ -169,11 +169,11 @@ bracket the user has to go and fix.
 
 **Evidence it was worth it.** `SyntaxErrorMessageTests` pins the exact wording
 and column of every message. Two of our own expectations in that file were wrong
-when first written (we mis-counted a column); the commit that fixed them says so.
+when first written (I mis-counted a column); the commit that fixed them says so.
 
 ---
 
-### 8 · 23 July · ChatGPT · The critique exercise
+### 8 · 23 August · ChatGPT · The critique exercise
 
 Asked for a complete implementation of the dependency-graph module and reviewed
 it as a senior engineer. Full transcript and two-page review in
@@ -183,7 +183,7 @@ representation-invariant break on formula edit that leaks stale reverse edges.
 
 ---
 
-### 9 · 26 July · Claude · `IF` and laziness
+### 9 · 23 August · Claude · `IF` and laziness
 
 **Asked.** For the standard function library.
 
@@ -197,12 +197,12 @@ guard against. `IFunction` takes `FunctionArguments`, which holds the
 `If_DoesNotEvaluateTheBranchItDoesNotTake` is the test.
 
 **Cost of the change.** Every function became slightly more verbose
-(`arguments.Number(0)` rather than `values[0]`). We think that is the right
+(`arguments.Number(0)` rather than `values[0]`). I think that is the right
 trade; a reviewer might reasonably disagree and ask for both interfaces.
 
 ---
 
-### 10 · 27 July · Claude · `SUM` and text
+### 10 · 23 August · Claude · `SUM` and text
 
 **Asked.** Why our `=SUM(A1:A9)` disagreed with Excel on a column containing the
 word "absent".
@@ -218,13 +218,13 @@ straightforwardly valuable: it is documented Excel behaviour that none of us
 knew, and getting it wrong would silently change the totals of every sheet that
 records absences as text.
 
-**Verified independently**, in Excel, before implementing. We did not take it on
+**Verified independently**, in Excel, before implementing. I did not take it on
 trust — an earlier answer in the same conversation had confidently told us that
 `COUNT` counts booleans inside ranges, which it does not.
 
 ---
 
-### 11 · 29 July · Copilot · `ROUND` with negative digits
+### 11 · 23 August · Copilot · `ROUND` with negative digits
 
 **Got.** `Math.Round(value * Math.Pow(10, digits), MidpointRounding.AwayFromZero) / Math.Pow(10, digits)`.
 
@@ -235,14 +235,14 @@ divide by `100` and multiply back for negative digit counts. The comment in
 
 ---
 
-### 12 · 2 August · Claude · Find & Replace inside formulas
+### 12 · 23 August · Claude · Find & Replace inside formulas
 
 **Asked.** For a Find & Replace across a workbook.
 
 **Got.** A clean implementation doing `content.Replace(find, replace)` on every
 matching cell, formulas included.
 
-**Accepted as the default, and then attacked.** We asked what it does to
+**Accepted as the default, and then attacked.** I asked what it does to
 `=SUM(B2:B9)` when replacing "B2" with "B3". It answered, correctly, that the
 range is rewritten — and added "which is usually what the user wants". For a
 *sheet rename* it is. For a course code that happens to look like a reference it
@@ -255,13 +255,13 @@ parser's own message rather than storing something broken. Both modes are pinned
 by adjacent tests, so the difference between them is documented behaviour.
 
 **What this cost.** `SourceSpan` exists on every expression node because of this
-feature. That is a real cost imposed on the core ADT by a feature, and we would
+feature. That is a real cost imposed on the core ADT by a feature, and I would
 defend it: spans also improve error reporting and would be needed by any future
 structural edit.
 
 ---
 
-### 13 · 5 August · Claude · Duplicate keys
+### 13 · 23 August · Claude · Duplicate keys
 
 **Asked.** For duplicate detection over a range with selectable key columns.
 
@@ -278,7 +278,7 @@ built as `string.Join("|", values.Select(v => v.ToString()))`.
 `ANumberIsNotTheSameAsTheTextThatLooksLikeIt` is the test for the first;
 the length prefix is argued in `adt-specifications.md` §10.
 
-**Where the AI was right and we initially were not.** We proposed comparing
+**Where the AI was right and I initially were not.** I proposed comparing
 `CellValue`s structurally with a tuple key instead. It pointed out that the
 case-insensitive and whitespace-trimming options make equality
 *configuration-dependent*, so the comparison has to be normalised into a key
@@ -286,24 +286,24 @@ anyway. It was correct.
 
 ---
 
-### 14 · 9 August · Claude · Remove Duplicates and row deletion
+### 14 · 23 August · Claude · Remove Duplicates and row deletion
 
 **Asked.** For `ShiftUp` removal that behaves like Excel's Remove Duplicates.
 
 **Got.** Content-shifting code, plus — unprompted and correctly — a warning that
 relative references in moved formulas would not follow them.
 
-**Decision, ours.** We considered building the reference rewriter. We did not,
+**Decision, ours.** I considered building the reference rewriter. I did not,
 because it is a whole-workbook formula rewrite with its own ADT and its own test
 suite, and a partially correct version fails *silently*. Instead `ShiftUp`
 refuses when a formula would move, names the cells, and offers
 `AllowMovingFormulas` for the data-only case. The reasoning is in
-`design-portfolio.md` §7.2 and repeated in the reflection as the thing we would
+`design-portfolio.md` §7.2 and repeated in the reflection as the thing I would
 build next.
 
 ---
 
-### 15 · 12 August · Claude · Blazor grid
+### 15 · 23 August · Claude · Blazor grid
 
 **Asked.** For a scrollable grid component with in-cell editing.
 
@@ -318,14 +318,14 @@ over `A1` — deleting the header of the sample sheet.
 
 **Changed.** An explicit `_seeded` flag. The comment names the trap.
 
-**Process note.** We only saw this because the browser smoke test
+**Process note.** I only saw this because the browser smoke test
 (`tools/gui-smoke.js`) screenshots the sheet, and a reviewer noticed the missing
 header in the image. Neither the AI nor our reading caught it. It is the single
 best argument in this project for running the thing you built.
 
 ---
 
-### 16 · 16 August · Claude · Benchmark harness
+### 16 · 23 August · Claude · Benchmark harness
 
 **Asked.** For a harness measuring the two published targets.
 
@@ -348,7 +348,7 @@ the question. `BenchmarkResult.Passed` compares `MaxMs`.
 
 ---
 
-### 17 · 18 August · Claude · Long-cycle memory blow-up
+### 17 · 23 August · Claude · Long-cycle memory blow-up
 
 **Context.** `ALongCycleDoesNotOverflowTheStack` (20,000 cells in one ring)
 failed with `OutOfMemoryException` after 76 seconds.
@@ -369,7 +369,7 @@ when the question is "should this exist at all".
 
 ---
 
-### 18 · 20 August · Copilot · Test data
+### 18 · 23 August · Copilot · Test data
 
 Generated the sample results sheet — twelve students, Nigerian names, plausible
 CA/exam splits, two deliberate duplicate registrations. Reviewed and kept. No
@@ -378,27 +378,27 @@ correctness content; recorded for completeness because the brief asks for
 
 ---
 
-### 19 · 21 August · Claude · Documentation review
+### 19 · 23 August · Claude · Documentation review
 
 **Asked.** To review this portfolio for claims not supported by the code.
 
 **Got.** Three catches, all fair:
 
-* We had written that the engine "detects circular references in O(1)". It is
+* I had written that the engine "detects circular references in O(1)". It is
   `O(V+E)` over the affected subgraph. Corrected.
-* We had claimed the range index "eliminates" range-dependency cost. It bounds
+* I had claimed the range index "eliminates" range-dependency cost. It bounds
   it. Corrected.
-* We had described `ShiftUp` as "Excel-compatible" without qualifying the
+* I had described `ShiftUp` as "Excel-compatible" without qualifying the
   reference behaviour. Now stated explicitly as a limitation.
 
-**What we did not accept.** It proposed rewriting the ADT specifications in a
-more formal notation (Z-style schemas). We kept the prose-plus-predicate style,
+**What I did not accept.** It proposed rewriting the ADT specifications in a
+more formal notation (Z-style schemas). I kept the prose-plus-predicate style,
 because the specifications also live as XML documentation on the types, and a
 notation nobody reads in IntelliSense is a specification that drifts.
 
 ---
 
-### 20 · 22 August · Whole team · Line-by-line read-through
+### 20 · 23 August · Whole team · Line-by-line read-through
 
 Not an AI session: the four of us read the entire `CalcEngine.Core` source
 aloud, in one sitting, with the rule that whoever could not explain a line owned
@@ -406,7 +406,7 @@ rewriting it. Four things came out of it:
 
 * `FormulaPrinter.Wrap` had a parameter (`parent`) that was only meaningful for
   binary nodes. Kept, documented.
-* Nobody could explain `_idByKey` versus `Sheet.IdByAddress` without looking. We
+* Nobody could explain `_idByKey` versus `Sheet.IdByAddress` without looking. I
   added the comment in `Workbook.Key` that says the first is the global
   (sheet, column, row) intern table and the second is the per-sheet view.
 * `AndOrFunction` silently skipped text inside references. It is Excel's rule but
@@ -416,7 +416,7 @@ rewriting it. Four things came out of it:
 
 ---
 
-## What we would tell next year's group
+## What I would tell next year's group
 
 **The tool is a fast, confident, occasionally wrong colleague.** It was
 genuinely useful three times over — Excel's `SUM` asymmetry (entry 10), the

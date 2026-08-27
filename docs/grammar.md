@@ -7,7 +7,7 @@ The normative machine-readable grammar is
 [`src/CalcEngine.Core/Grammar/Formula.g4`](../src/CalcEngine.Core/Grammar/Formula.g4).
 This document is the human-readable specification of the same language: the
 EBNF, the lexical conventions, the precedence rationale, and — importantly for
-the oral defence — the places where we deliberately diverge from Excel and why.
+the oral defence — the places where I deliberately diverge from Excel and why.
 
 ---
 
@@ -16,14 +16,14 @@ the oral defence — the places where we deliberately diverge from Excel and why
 A **cell's content** is a string supplied by the client. The engine classifies
 it before any parsing happens:
 
-| Content | Classified as | Example |
-| --- | --- | --- |
-| begins with `=` | *formula* — parsed with the grammar below | `=SUM(B2:B45)*0.3` |
-| parses as a number under the invariant culture | *number literal* | `72.5`, `-3`, `1.2e3` |
-| `TRUE` / `FALSE`, any case | *boolean literal* | `true` |
-| one of the seven error spellings | *error literal* | `#N/A` |
-| empty or all whitespace | *blank* | `` |
-| anything else | *text literal* | `Ngozi Okafor` |
+| Content                                        | Classified as                             | Example               |
+| ---------------------------------------------- | ----------------------------------------- | --------------------- |
+| begins with `=`                                | *formula* — parsed with the grammar below | `=SUM(B2:B45)*0.3`    |
+| parses as a number under the invariant culture | *number literal*                          | `72.5`, `-3`, `1.2e3` |
+| `TRUE` / `FALSE`, any case                     | *boolean literal*                         | `true`                |
+| one of the seven error spellings               | *error literal*                           | `#N/A`                |
+| empty or all whitespace                        | *blank*                                   | ``                    |
+| anything else                                  | *text literal*                            | `Ngozi Okafor`        |
 
 Only the first row reaches the parser. This split is deliberate: a student's
 name is not a syntax error, and typing `#REF!` into a cell should reproduce the
@@ -76,18 +76,18 @@ left-recursive rule whose alternatives are ordered by precedence; that is what
 
 ## 3. Lexical conventions
 
-| Terminal | Definition | Notes |
-| --- | --- | --- |
-| `NUMBER` | `( [0-9]+ ( '.' [0-9]* )? \| '.' [0-9]+ ) ( [Ee] [+-]? [0-9]+ )?` | Invariant culture only; `1,5` is *not* a number. No sign — `-3` is unary minus applied to `3`. |
-| `STRING` | `'"' ( ~'"' \| '""' )* '"'` | A literal quote is doubled: `"she said ""yes"""`. |
-| `TRUE` / `FALSE` | case-insensitive keywords | `True`, `TRUE`, `true` all lex as the boolean. |
-| `ERROR_LITERAL` | `#DIV/0!` `#VALUE!` `#REF!` `#NAME?` `#NUM!` `#N/A` `#CIRC!` | Upper case only, as spelled by the engine itself. |
-| `CELL_REF` | `'$'? [A-Za-z]+ '$'? [0-9]+` | Column letters are case-insensitive: `b2` ≡ `B2`. `$` marks an absolute component. |
-| `SHEET_QUALIFIER` | `( [A-Za-z_][A-Za-z0-9_.]* \| '\'' ( ~'\'' \| '\'\'' )* '\'' ) '!'` | Carries its own `!`; see §5. |
-| `IDENTIFIER` | `[A-Za-z_][A-Za-z0-9_.]*` | Function names. |
-| `WS` | `[ \t\r\n]+` | Skipped everywhere; `= SUM ( B2 : B45 )` is legal. |
-| `UNTERMINATED_STRING` | `'"' ( ~'"' \| '""' )*` | Exists only to produce a good error message. |
-| `UNEXPECTED_CHAR` | `.` | Catch-all, see §6. |
+| Terminal              | Definition                                                          | Notes                                                                                          |
+| --------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `NUMBER`              | `( [0-9]+ ( '.' [0-9]* )? \| '.' [0-9]+ ) ( [Ee] [+-]? [0-9]+ )?`   | Invariant culture only; `1,5` is *not* a number. No sign — `-3` is unary minus applied to `3`. |
+| `STRING`              | `'"' ( ~'"' \| '""' )* '"'`                                         | A literal quote is doubled: `"she said ""yes"""`.                                              |
+| `TRUE` / `FALSE`      | case-insensitive keywords                                           | `True`, `TRUE`, `true` all lex as the boolean.                                                 |
+| `ERROR_LITERAL`       | `#DIV/0!` `#VALUE!` `#REF!` `#NAME?` `#NUM!` `#N/A` `#CIRC!`        | Upper case only, as spelled by the engine itself.                                              |
+| `CELL_REF`            | `'$'? [A-Za-z]+ '$'? [0-9]+`                                        | Column letters are case-insensitive: `b2` ≡ `B2`. `$` marks an absolute component.             |
+| `SHEET_QUALIFIER`     | `( [A-Za-z_][A-Za-z0-9_.]* \| '\'' ( ~'\'' \| '\'\'' )* '\'' ) '!'` | Carries its own `!`; see §5.                                                                   |
+| `IDENTIFIER`          | `[A-Za-z_][A-Za-z0-9_.]*`                                           | Function names.                                                                                |
+| `WS`                  | `[ \t\r\n]+`                                                        | Skipped everywhere; `= SUM ( B2 : B45 )` is legal.                                             |
+| `UNTERMINATED_STRING` | `'"' ( ~'"' \| '""' )*`                                             | Exists only to produce a good error message.                                                   |
+| `UNEXPECTED_CHAR`     | `.`                                                                 | Catch-all, see §6.                                                                             |
 
 **Bounds.** A `CELL_REF` is *lexically* any letters-then-digits. The bounds
 check (`A`–`XFD`, rows `1`–`1048576`) is done in the AST builder, not the
@@ -100,15 +100,15 @@ column XFD”* rather than a bare “no viable alternative”.
 
 Highest binding first. This is **Excel's** table, not C's.
 
-| Level | Operators | Associativity |
-| --- | --- | --- |
-| 1 | unary `+` `-` | prefix |
-| 2 | `%` | postfix |
-| 3 | `^` | **right** |
-| 4 | `*` `/` | left |
-| 5 | `+` `-` | left |
-| 6 | `&` | left |
-| 7 | `=` `<>` `<` `<=` `>` `>=` | left |
+| Level | Operators                  | Associativity |
+| ----- | -------------------------- | ------------- |
+| 1     | unary `+` `-`              | prefix        |
+| 2     | `%`                        | postfix       |
+| 3     | `^`                        | **right**     |
+| 4     | `*` `/`                    | left          |
+| 5     | `+` `-`                    | left          |
+| 6     | `&`                        | left          |
+| 7     | `=` `<>` `<` `<=` `>` `>=` | left          |
 
 In ANTLR 4 a left-recursive rule resolves ambiguity by *alternative order*:
 the alternative listed first wins, i.e. binds tightest. `Formula.g4` therefore
@@ -121,7 +121,7 @@ exactly the table above. `<assoc=right>` is applied to `^` only.
 than `^` — the same as Excel, LibreOffice and Google Sheets, and the opposite
 of the convention in mathematics and in C.
 
-We chose Excel compatibility over mathematical convention because the engine's
+I chose Excel compatibility over mathematical convention because the engine's
 declared purpose is to run formulas copied out of existing departmental
 workbooks. A workbook that silently changes the sign of a term when it is
 migrated is worse than one that is surprising to a mathematician. A one-line
@@ -133,7 +133,7 @@ documents it as a test rather than as folklore.
 
 `=1<2<3` parses (left-associatively) as `(1<2)<3` → `TRUE<3` → `FALSE`,
 because a boolean sorts above any number in the spreadsheet ordering. This is
-Excel's behaviour and falls out of the grammar; we did not special-case it.
+Excel's behaviour and falls out of the grammar; I did not special-case it.
 
 ---
 
@@ -187,15 +187,15 @@ character becomes a token and there is exactly one error path.
 
 Examples produced by the implementation (`SyntaxErrorMessageTests`):
 
-| Input | Message |
-| --- | --- |
-| `=SUM(B2:B45` | `Column 12: the bracket opened at column 5 was never closed.` |
-| `=2 +` | `Column 5: a value, cell reference or function call was expected after '+'.` |
-| `=SUM(,1)` | `Column 6: a value, cell reference or function call was expected, but ',' was found.` |
-| `=A1 $ B2` | `Column 5: '$' is not a valid character in a formula.` |
-| `="unterminated` | `Column 2: this text literal has no closing quotation mark.` |
-| `=ZZZZ9+1` | `Column 2: 'ZZZZ' is beyond the last column, XFD.` |
-| `=NOSUCH(1)` | `Column 2: there is no function called 'NOSUCH'.` (evaluation-time `#NAME?`) |
+| Input            | Message                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| `=SUM(B2:B45`    | `Column 12: the bracket opened at column 5 was never closed.`                         |
+| `=2 +`           | `Column 5: a value, cell reference or function call was expected after '+'.`          |
+| `=SUM(,1)`       | `Column 6: a value, cell reference or function call was expected, but ',' was found.` |
+| `=A1 $ B2`       | `Column 5: '$' is not a valid character in a formula.`                                |
+| `="unterminated` | `Column 2: this text literal has no closing quotation mark.`                          |
+| `=ZZZZ9+1`       | `Column 2: 'ZZZZ' is beyond the last column, XFD.`                                    |
+| `=NOSUCH(1)`     | `Column 2: there is no function called 'NOSUCH'.` (evaluation-time `#NAME?`)          |
 
 ---
 

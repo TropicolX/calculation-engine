@@ -49,12 +49,12 @@ Exactly 100,000 cells, containing exactly the 500-cell chain the brief
 describes, so the numbers answer the question that was asked rather than an
 easier one.
 
-| Sheet | Contents | Cells |
-| --- | --- | ---: |
-| `Data` | 10,000 rows × 8 columns of numeric literals | 80,000 |
-| `Calc` | 9,750 rows × 2 formulas: `=SUM(Data!Ar:Hr)` and `=ROUND(Ar*0.3,2)` | 19,500 |
-| `Chain` | `=Data!A1*2`, then 499 cells each reading the one above | 500 |
-| | **Total** | **100,000** |
+| Sheet   | Contents                                                           |       Cells |
+| ------- | ------------------------------------------------------------------ | ----------: |
+| `Data`  | 10,000 rows × 8 columns of numeric literals                        |      80,000 |
+| `Calc`  | 9,750 rows × 2 formulas: `=SUM(Data!Ar:Hr)` and `=ROUND(Ar*0.3,2)` |      19,500 |
+| `Chain` | `=Data!A1*2`, then 499 cells each reading the one above            |         500 |
+|         | **Total**                                                          | **100,000** |
 
 Editing `Data!A1` therefore reaches the whole 500-cell chain plus the two `Calc`
 cells for row 1 — 502 evaluations — and touches nothing else. Editing
@@ -71,17 +71,17 @@ processors, Release build, workstation GC. A target is treated as met only when
 the **worst** observed run is inside the budget — reporting a median that fits
 while the tail does not would be a way of not answering the question.
 
-| Benchmark | Target | Runs | Min | Median | p95 | Max | Verdict |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | :---: |
-| Load 100,000 cells (parse + first evaluation) | no published target | 1 | 1214.76 ms | 1214.76 ms | 1214.76 ms | 1214.76 ms | — |
-| **Full recalculation of 100,000 cells** | **< 2,000 ms** | 5 | 74.39 ms | 75.04 ms | 79.37 ms | **79.37 ms** | **PASS** |
-| **Single edit propagating through 500 dependents** | **< 50 ms** | 30 | 0.17 ms | 0.21 ms | 0.32 ms | **0.32 ms** | **PASS** |
-| Single edit with no dependents | no published target | 30 | 0.00 ms | 0.00 ms | 0.02 ms | 0.08 ms | — |
-| Edit inside a SUM range (range index lookup) | no published target | 30 | 0.00 ms | 0.01 ms | 0.06 ms | 0.10 ms | — |
-| Find across 19,500 formula cells | no published target | 10 | 16.08 ms | 19.54 ms | 44.29 ms | 44.29 ms | — |
-| Replace across 9,750 formulas, twice, with re-parse validation | no published target | 5 | 483.37 ms | 496.99 ms | 536.08 ms | 536.08 ms | — |
-| Duplicate scan of 10,000 rows × 8 columns | no published target | 10 | 42.03 ms | 47.81 ms | 64.61 ms | 64.61 ms | — |
-| Edit, undo and redo through the 500-cell chain | no published target | 30 | 0.44 ms | 0.48 ms | 0.61 ms | 0.65 ms | — |
+| Benchmark                                                      | Target              | Runs |        Min |     Median |        p95 |          Max | Verdict  |
+| -------------------------------------------------------------- | ------------------- | ---: | ---------: | ---------: | ---------: | -----------: | :------: |
+| Load 100,000 cells (parse + first evaluation)                  | no published target |    1 | 1214.76 ms | 1214.76 ms | 1214.76 ms |   1214.76 ms |    —     |
+| **Full recalculation of 100,000 cells**                        | **< 2,000 ms**      |    5 |   74.39 ms |   75.04 ms |   79.37 ms | **79.37 ms** | **PASS** |
+| **Single edit propagating through 500 dependents**             | **< 50 ms**         |   30 |    0.17 ms |    0.21 ms |    0.32 ms |  **0.32 ms** | **PASS** |
+| Single edit with no dependents                                 | no published target |   30 |    0.00 ms |    0.00 ms |    0.02 ms |      0.08 ms |    —     |
+| Edit inside a SUM range (range index lookup)                   | no published target |   30 |    0.00 ms |    0.01 ms |    0.06 ms |      0.10 ms |    —     |
+| Find across 19,500 formula cells                               | no published target |   10 |   16.08 ms |   19.54 ms |   44.29 ms |     44.29 ms |    —     |
+| Replace across 9,750 formulas, twice, with re-parse validation | no published target |    5 |  483.37 ms |  496.99 ms |  536.08 ms |    536.08 ms |    —     |
+| Duplicate scan of 10,000 rows × 8 columns                      | no published target |   10 |   42.03 ms |   47.81 ms |   64.61 ms |     64.61 ms |    —     |
+| Edit, undo and redo through the 500-cell chain                 | no published target |   30 |    0.44 ms |    0.48 ms |    0.61 ms |      0.65 ms |    —     |
 
 **Headroom: 156× on the propagation target, 25× on the full recalculation.**
 
@@ -120,12 +120,12 @@ implementation would perform.
 
 ---
 
-## 5. What we would attack next, and why we did not
+## 5. What I would attack next, and why I did not
 
 * **Parse throughput.** 60 µs per formula is ANTLR's `AdaptivePredict` doing
   full-context prediction on a small grammar. Setting the parser to
   `PredictionMode.SLL` with a fallback to LL on failure typically wins 2–5× and
-  is a five-line change. We left it out because load time has no published
+  is a five-line change. I left it out because load time has no published
   target and the change deserves its own tests.
 * **A formula-tree cache.** The 9,750 `Calc` formulas differ only in a row
   number; a workbook that interned structurally identical trees would parse a
@@ -134,7 +134,7 @@ implementation would perform.
 * **Parallel evaluation of independent topological levels.** The order already
   identifies cells that cannot affect one another. With a 25× margin on the only
   published target, adding threads to a data structure this mutable would be
-  buying risk we do not need.
+  buying risk I do not need.
 
 ## 6. Reproducing the environment
 
