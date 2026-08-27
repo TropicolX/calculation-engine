@@ -4,9 +4,7 @@
 produced by ChatGPT on 23 July in response to a request for a "complete,
 production-quality" dependency-tracking module.
 
-Reviewed as we would review a pull request from a competent colleague who was
-working fast: say what is right, then what is wrong, then what it costs, then
-what we did instead.
+Reviewed as we would review a pull request from a competent colleague who was working fast: say what is right, then what is wrong, then what it costs, then what we did instead.
 
 ---
 
@@ -209,17 +207,17 @@ nothing anchors the code to an intent, and the invariant break is invisible.
 
 ## 4. What we did differently, in one table
 
-| Aspect | The AI module | CalcEngine | Consequence |
-| --- | --- | --- | --- |
-| Vertex identity | `"Sheet1!B2"` string | interned `int` | array adjacency; flat mark arrays |
-| Edit cost | topological sort of the whole workbook | DFS from the edited cell only | 0.32 ms vs an estimated ~75 ms |
-| Traversal marks | two `HashSet`s per call | generation-stamped arrays | no per-edit allocation |
-| Ranges | expanded to one edge per cell | 64×64 spatial index | `=SUM(B2:B45)` is one entry, not 44 |
-| Cycle reporting | throws, first cycle only | recorded in the result, all cycles | non-cycle cells still evaluated |
-| Cycle path | non-deterministic, includes non-cycle cells | canonical, exactly the ring | reproducible message |
-| Recursion | yes | explicit stack | survives a 20,000-cell chain |
-| Edge removal | reverse edges leak | both directions cleared | a fixed cycle stays fixed |
-| Specification | none | AF and RI, in code and in docs | the invariant break would have been visible |
+| Aspect          | The AI module                               | CalcEngine                         | Consequence                                 |
+| --------------- | ------------------------------------------- | ---------------------------------- | ------------------------------------------- |
+| Vertex identity | `"Sheet1!B2"` string                        | interned `int`                     | array adjacency; flat mark arrays           |
+| Edit cost       | topological sort of the whole workbook      | DFS from the edited cell only      | 0.32 ms vs an estimated ~75 ms              |
+| Traversal marks | two `HashSet`s per call                     | generation-stamped arrays          | no per-edit allocation                      |
+| Ranges          | expanded to one edge per cell               | 64×64 spatial index                | `=SUM(B2:B45)` is one entry, not 44         |
+| Cycle reporting | throws, first cycle only                    | recorded in the result, all cycles | non-cycle cells still evaluated             |
+| Cycle path      | non-deterministic, includes non-cycle cells | canonical, exactly the ring        | reproducible message                        |
+| Recursion       | yes                                         | explicit stack                     | survives a 20,000-cell chain                |
+| Edge removal    | reverse edges leak                          | both directions cleared            | a fixed cycle stays fixed                   |
+| Specification   | none                                        | AF and RI, in code and in docs     | the invariant break would have been visible |
 
 ---
 
