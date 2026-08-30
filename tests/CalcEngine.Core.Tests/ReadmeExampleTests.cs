@@ -1,4 +1,6 @@
 using CalcEngine.Core;
+using CalcEngine.Core.Functions;
+using CalcEngine.Core.Model;
 using CalcEngine.Core.Parsing;
 
 namespace CalcEngine.Core.Tests;
@@ -57,6 +59,18 @@ public class ReadmeExampleTests
         workbook.History.Undo();
         Assert.Null(workbook.GetCellContent("Marks", "G2"));
         Assert.Empty(workbook.RecalculateAll().Cycles);
+    }
+
+    [Fact]
+    public void TheDocumentedFunctionCountIsAccurate()
+    {
+        // The revision guide and the README both quote these figures out loud.
+        var registry = FunctionRegistry.CreateDefault();
+        var required = new[] { "SUM", "AVERAGE", "MIN", "MAX", "COUNT", "IF", "ROUND", "LOOKUP" };
+
+        Assert.All(required, name => Assert.Contains(name, registry.Names));
+        Assert.Equal(36, registry.Names.Count);
+        Assert.Equal(8, ErrorValue.All.Count);
     }
 
     [Fact]

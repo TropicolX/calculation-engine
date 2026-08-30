@@ -8,7 +8,7 @@ dotnet test --filter "Category!=Performance"       # without the timing guards, 
 dotnet test --filter "Category=Performance"        # the two published targets only
 ```
 
-382 tests, all green.
+383 tests, all green.
 
 ---
 
@@ -23,8 +23,8 @@ dotnet test --filter "Category=Performance"        # the two published targets o
 | `Commands/` | 17 | Undo, redo, bounded history, batch and composite operations, suspension |
 | `Features/` | 57 | Find & Replace and duplicate detection, including every way each can refuse |
 | `Performance/` | 3 | The two published targets and the locality claim behind them |
-| `ReadmeExampleTests` | 3 | Every value quoted in README.md and in the grammar's error catalogue, executed |
-| *Total* | **382** | |
+| `ReadmeExampleTests` | 4 | Every value quoted in README.md and in the grammar's error catalogue, executed |
+| *Total* | **383** | |
 
 ---
 
@@ -143,8 +143,13 @@ from the workbook.
 
 The lesson we took: unit tests prove the parts, running the whole thing proves
 the seams — and the seam nobody exercised was the one where two views of the
-same cell can disagree. All three defects are in the client or in a code path no
-test drove like a real client would; none is in `CalcEngine.Core`.
+same cell can disagree.
+
+Two of the three are in the GUI client. The third is not: the
+`AutomaticCalculation` defect is in `Workbook`, in the engine itself, and it
+survived 375 passing tests because none of them loaded a workbook the way a
+client does. It is the one to mention first if asked, precisely because it is
+the one that cannot be waved away as "only the front end".
 
 ---
 
